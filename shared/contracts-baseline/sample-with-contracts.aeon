@@ -1,0 +1,8 @@
+aeon:mode = "strict"
+aeon:profile = "aeon.gp.profile.v1"
+aeon:schema = "aeon.gp.schema.v1"
+
+app:object = {
+  name:string = "AEON"
+  port:int32 = 8080
+}

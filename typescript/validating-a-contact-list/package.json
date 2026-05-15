@@ -1,0 +1,21 @@
+{
+  "name": "validating-a-contact-list",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "read-contacts": "node src/read-contacts.js",
+    "generate-sample": "node src/generate-sample.js",
+    "read-contacts-assignment": "node src/read-contacts-assignment.js"
+  },
+  "dependencies": {
+    "@altopelago/aeon-aes": "0.9.0",
+    "@altopelago/aeon-annotation-stream": "0.9.0",
+    "@altopelago/aeon-canonical": "0.9.0",
+    "@altopelago/aeon-core": "0.9.0",
+    "@altopelago/aeon-finalize": "0.9.0",
+    "@altopelago/aeon-lexer": "0.9.0",
+    "@altopelago/aeon-parser": "0.9.0",
+    "@altopelago/aeon-sdk": "0.9.0"
+  }
+}

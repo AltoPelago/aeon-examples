@@ -1,0 +1,43 @@
+aeos:schema = {
+  id = "altopelago.contact-list.schema.v1"
+  version = "1"
+
+  rules = {
+    "$.contacts" = {
+      required = true
+      type = "ListNode"
+      datatype = "contactList"
+    }
+
+    "$.contacts[*].firstName" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 1
+    }
+
+    "$.contacts[*].lastName" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 1
+    }
+
+    "$.contacts[*].email" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 3
+    }
+
+    "$.contacts[*].phone" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 8
+    }
+
+    "$.contacts[*].countryCode" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 2
+      max_length = 2
+    }
+  }
+}

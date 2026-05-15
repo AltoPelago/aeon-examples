@@ -1,0 +1,11 @@
+aeon:header = {
+  mode:string = "strict"
+}
+
+sun:farewell = {
+  version:ver[.] = ^1.1.0
+  daytime:string = "Hello, Sun"
+  farewell:string = "Sayonara, Sun"
+  sunsetHour:number = 18
+  cooldownHours:number = 3
+}

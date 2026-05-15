@@ -1,0 +1,28 @@
+aeos:schema = {
+  id = "altopelago.reference-safe-schema.v1"
+  version = "1"
+
+  rules = {
+    "$.person.postcode" = {
+      required = true
+      reference = "require"
+      reference_kind = "clone"
+      reference_target_path = "$.postcodes[*]"
+      type = "IntegerLiteral"
+      min_value = "1000"
+      max_value = "9999"
+      resolve_reference_form = true
+    }
+
+    "$.person.age" = {
+      required = true
+      reference = "require"
+      reference_kind = "clone"
+      reference_target_path = "$.ages[*]"
+      type = "IntegerLiteral"
+      min_value = "0"
+      max_value = "120"
+      resolve_reference_form = true
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_id": "altopelago.sayonara-sun.schema.v1",
+  "schema_version": "1",
+  "rules": [
+    {
+      "path": "$.sun",
+      "constraints": {
+        "required": true,
+        "type": "ObjectNode"
+      }
+    },
+    {
+      "path": "$.sun.version",
+      "constraints": {
+        "required": true,
+        "type": "SeparatorLiteral"
+      }
+    },
+    {
+      "path": "$.sun.daytime",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral"
+      }
+    },
+    {
+      "path": "$.sun.farewell",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral"
+      }
+    },
+    {
+      "path": "$.sun.sunsetHour",
+      "constraints": {
+        "required": true,
+        "type": "IntegerLiteral",
+        "sign": "unsigned",
+        "min_digits": 1,
+        "max_digits": 2
+      }
+    },
+    {
+      "path": "$.sun.cooldownHours",
+      "constraints": {
+        "required": true,
+        "type": "IntegerLiteral",
+        "sign": "unsigned",
+        "min_digits": 1,
+        "max_digits": 1
+      }
+    }
+  ]
+}

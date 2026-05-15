@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AEON Alignment Playground</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">AEON Alignment Playground</p>
+          <h1>Compare Rust WASM And TypeScript Processing</h1>
+        </div>
+        <div class="status-row">
+          <span id="run-status" class="pill">idle</span>
+          <span id="diag-status" class="pill">waiting</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel editor-panel">
+          <div class="panel-header">
+            <div class="tab-row">
+              <button id="tab-source" class="tab is-active" type="button">Source</button>
+              <button id="tab-file" class="tab" type="button">File</button>
+              <button id="tab-options" class="tab" type="button">Options</button>
+            </div>
+            <div class="action-row">
+              <button id="process-ts" class="primary" type="button">Process TS</button>
+              <button id="process-rust" type="button">Process Rust</button>
+              <button id="process-compare" type="button">Compare</button>
+            </div>
+          </div>
+
+          <div id="pane-source" class="input-pane is-active">
+            <div class="source-toolbar">
+              <label class="inline-toggle" for="source-tab-inserts-tab">
+                <input id="source-tab-inserts-tab" type="checkbox" />
+                <span>Tab inserts <code>\t</code></span>
+              </label>
+              <p class="meta-note">Browser edit shortcuts are available for cut, copy, paste, and select all.</p>
+            </div>
+            <div class="highlight-editor">
+              <pre id="source-gutter" class="line-gutter" aria-hidden="true"></pre>
+              <pre id="source-highlight" class="highlight-backdrop" aria-hidden="true"><code></code></pre>
+              <textarea id="source" spellcheck="false" wrap="off"></textarea>
+            </div>
+          </div>
+
+          <div id="pane-file" class="input-pane">
+            <div class="file-actions">
+              <button id="file-open" type="button">Open AEON</button>
+              <button id="file-save" type="button">Save AEON</button>
+              <button id="file-save-as" type="button">Save AEON As</button>
+              <button id="file-open-neon" type="button">Open Neon</button>
+              <button id="file-save-neon" type="button">Save Neon</button>
+              <button id="import-image-base64" type="button">Import Image As Base64</button>
+              <button id="import-image-attachment" type="button">Attach Image To Neon</button>
+            </div>
+
+            <div class="file-card">
+              <p class="file-label">Current File</p>
+              <p id="current-file-path" class="file-path">Unsaved playground buffer</p>
+            </div>
+
+            <div class="file-card">
+              <p class="file-label">Current Neon File</p>
+              <p id="current-neon-path" class="file-path">No Neon file opened or saved yet</p>
+            </div>
+
+            <div class="file-card">
+              <p class="file-label">Neon Attachments</p>
+              <p id="attachment-copy" class="file-copy">No image attachments are queued for Neon packaging.</p>
+              <div id="attachment-list" class="attachment-list"></div>
+            </div>
+
+            <div class="file-card">
+              <p class="file-label">What This Does</p>
+              <p class="file-copy">Open AEON loads an `.aeon` file into the Source tab with browser file APIs. Save AEON downloads the current Source content. Neon container read/write is intentionally left to a separate desktop wrapper example. Image import can append AEON base64 text into Source.</p>
+            </div>
+          </div>
+
+          <div id="pane-options" class="input-pane">
+            <div class="controls-grid">
+              <label>
+                <span>Validation mode</span>
+                <select id="validation-mode">
+                  <option value="none">none</option>
+                  <option value="loose">loose</option>
+                  <option value="strict" selected>strict</option>
+                  <option value="custom">custom</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Separator depth</span>
+                <input id="separator-depth" type="number" min="1" max="16" value="8" />
+              </label>
+
+              <label>
+                <span>Attribute depth</span>
+                <input id="attribute-depth" type="number" min="1" max="16" value="1" />
+              </label>
+
+              <label>
+                <span>Generic depth</span>
+                <input id="generic-depth" type="number" min="1" max="16" value="1" />
+              </label>
+
+              <label>
+                <span>Materialization</span>
+                <select id="materialization-mode">
+                  <option value="all" selected>all</option>
+                  <option value="projected">projected</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Finalize scope</span>
+                <select id="finalize-scope">
+                  <option value="payload" selected>payload</option>
+                  <option value="full">full</option>
+                  <option value="header">header</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Neon encoding</span>
+                <select id="neon-encoding">
+                  <option value="2p6b-aeon" selected>2p6b-aeon</option>
+                  <option value="2p6b-gp">2p6b-gp</option>
+                  <option value="3p6b">3p6b</option>
+                  <option value="utf-8">utf-8</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Neon compression</span>
+                <select id="neon-compression">
+                  <option value="none" selected>none</option>
+                  <option value="race">race</option>
+                  <option value="deflate">deflate</option>
+                  <option value="brotli">brotli</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Neon checksum</span>
+                <select id="neon-checksum">
+                  <option value="false" selected>off</option>
+                  <option value="true">on</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Neon magic</span>
+                <select id="neon-magic">
+                  <option value="present" selected>present</option>
+                  <option value="omitted">omitted</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="stack-field">
+              <span>Include paths</span>
+              <textarea id="include-paths" rows="5" placeholder="$.app.name&#10;$.app.port"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel output-panel">
+          <div class="panel-header">
+            <div class="tab-row">
+              <button id="tab-canonical" class="tab is-active" type="button">Canonical AEON</button>
+              <button id="tab-finalized" class="tab" type="button">Finalized JSON</button>
+              <button id="tab-annotations" class="tab" type="button">Annotation Stream</button>
+              <button id="tab-comparison" class="tab" type="button">Comparison</button>
+              <button id="tab-neon" class="tab" type="button">Neon Wrapper</button>
+            </div>
+          </div>
+          <p id="run-meta" class="meta-line">processor: typescript · materialization: all</p>
+          <p id="view-meta" class="meta-note">Canonical AEON is derived from the raw source. Finalized JSON comes from the validation-mode processing pipeline. Annotation Stream reflects the structured comments found in the current source.</p>
+          <pre id="output"></pre>
+        </section>
+
+        <section class="panel diagnostics-panel">
+          <div class="panel-header">
+            <h2>Diagnostics</h2>
+          </div>
+          <pre id="diagnostics"></pre>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="neon-save-dialog" class="overlay-dialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head">
+          <h2>Save Neon File</h2>
+          <p class="dialog-copy">Choose the wrapper options to use for this `.neon` save.</p>
+        </div>
+
+        <div class="controls-grid">
+          <label>
+            <span>Neon encoding</span>
+            <select id="dialog-neon-encoding">
+              <option value="2p6b-aeon" selected>2p6b-aeon</option>
+              <option value="2p6b-gp">2p6b-gp</option>
+              <option value="3p6b">3p6b</option>
+              <option value="utf-8">utf-8</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Neon compression</span>
+            <select id="dialog-neon-compression">
+              <option value="none" selected>none</option>
+              <option value="race">race</option>
+              <option value="deflate">deflate</option>
+              <option value="brotli">brotli</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Neon checksum</span>
+            <select id="dialog-neon-checksum">
+              <option value="false" selected>off</option>
+              <option value="true">on</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Neon magic</span>
+            <select id="dialog-neon-magic">
+              <option value="present" selected>present</option>
+              <option value="omitted">omitted</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button id="neon-save-confirm" class="primary" value="default" type="button">Save Neon</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="neon-stats-dialog" class="overlay-dialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head">
+          <h2>Neon Save Stats</h2>
+          <p class="dialog-copy">The file has been written. Here are the container details that came back from the Neon runtime.</p>
+        </div>
+
+        <pre id="neon-stats-output" class="dialog-pre"></pre>
+
+        <div class="dialog-actions">
+          <button class="primary" value="close" type="submit">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

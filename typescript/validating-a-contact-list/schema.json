@@ -1,0 +1,55 @@
+{
+  "schema_id": "altopelago.contact-list.schema.v1",
+  "schema_version": "1",
+  "rules": [
+    {
+      "path": "$.contacts",
+      "constraints": {
+        "required": true,
+        "type": "ListNode",
+        "datatype": "contactList"
+      }
+    },
+    {
+      "path": "$.contacts[*].firstName",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "$.contacts[*].lastName",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "$.contacts[*].email",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 3
+      }
+    },
+    {
+      "path": "$.contacts[*].phone",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 8
+      }
+    },
+    {
+      "path": "$.contacts[*].countryCode",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 2,
+        "max_length": 2
+      }
+    }
+  ]
+}

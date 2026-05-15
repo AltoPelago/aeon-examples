@@ -1,0 +1,42 @@
+aeos:schema = {
+  id = "altopelago.sayonara-sun.schema.v1"
+  version = "1"
+
+  rules = {
+    "$.sun" = {
+      required = true
+      type = "ObjectNode"
+    }
+
+    "$.sun.version" = {
+      required = true
+      type = "SeparatorLiteral"
+    }
+
+    "$.sun.daytime" = {
+      required = true
+      type = "StringLiteral"
+    }
+
+    "$.sun.farewell" = {
+      required = true
+      type = "StringLiteral"
+    }
+
+    "$.sun.sunsetHour" = {
+      required = true
+      type = "IntegerLiteral"
+      sign = "unsigned"
+      min_digits = 1
+      max_digits = 2
+    }
+
+    "$.sun.cooldownHours" = {
+      required = true
+      type = "IntegerLiteral"
+      sign = "unsigned"
+      min_digits = 1
+      max_digits = 1
+    }
+  }
+}

@@ -1,0 +1,14 @@
+aeon:header = {
+  mode:string = "strict"
+  version = "1"
+  profile = "aeon.gp.profile.v1"
+  schema = "altopelago.sayonara-sun.schema.v1"
+}
+
+sun:farewell = {
+  version:ver[.] = ^1.1.0
+  daytime:string = "Hello, Sun"
+  farewell:string = "Sayonara, Sun"
+  sunsetHour:number = 18
+  cooldownHours:number = 3
+}

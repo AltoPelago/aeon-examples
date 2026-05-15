@@ -1,0 +1,44 @@
+aeon:header = {
+  encoding:string = "utf-8"
+  mode:string = "loose"
+  version = "1"
+  profile = "aeon.gp.profile.v1"
+  schema = "altopelago.contact-list.schema.v1"
+}
+contacts:contactList = [
+  {
+    firstName:string = "Nina"
+    lastName:string = "Parker"
+    email:string = "nina.parker75@example.com"
+    phone:string = "+4465046408"
+    countryCode:string = "GB"
+  }
+  {
+    firstName:string = "Zoe"
+    lastName:string = "Nguyen"
+    email:string = "zoe.nguyen17@example.com"
+    phone:string = "+6172883948"
+    countryCode:string = "AU"
+  }
+  {
+    firstName:string = "Mia"
+    lastName:string = "Hughes"
+    email:string = "mia.hughes51@example.com"
+    phone:string = "+183394236"
+    countryCode:string = "US"
+  }
+  {
+    firstName:string = "Ruby"
+    lastName:string = "Lopez"
+    email:string = "ruby.lopez55@example.com"
+    phone:string = "+4426359916"
+    countryCode:string = "GB"
+  }
+  {
+    firstName:string = "Ethan"
+    lastName:string = "Nguyen"
+    email:string = "ethan.nguyen95@example.com"
+    phone:string = "+6116966551"
+    countryCode:string = "AU"
+  }
+]

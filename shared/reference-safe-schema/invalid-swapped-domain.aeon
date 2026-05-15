@@ -1,0 +1,13 @@
+aeon:header = {
+  version = "1"
+  profile = "aeon.gp.profile.v1"
+  schema = "altopelago.reference-safe-schema.v1"
+}
+
+postcodes = [2000]
+ages = [42]
+
+person = {
+  postcode = ~ages[0]
+  age = ~ages[0]
+}

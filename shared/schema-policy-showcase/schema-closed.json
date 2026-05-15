@@ -1,0 +1,61 @@
+{
+  "schema_id": "altopelago.schema-policy-showcase.closed.v1",
+  "schema_version": "1",
+  "world": "closed",
+  "rules": [
+    {
+      "path": "$.app",
+      "constraints": {
+        "required": true,
+        "type": "ObjectNode",
+        "datatype": "config"
+      }
+    },
+    {
+      "path": "$.app.name",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "$.app.port",
+      "constraints": {
+        "required": true,
+        "type": "IntegerLiteral",
+        "sign": "unsigned",
+        "min_value": "1",
+        "max_value": "65535"
+      }
+    },
+    {
+      "path": "$.app.region",
+      "constraints": {
+        "required": true,
+        "reference": "require",
+        "reference_kind": "clone",
+        "reference_target_pattern": "^\\$\\.regions\\[\\d+\\]$",
+        "type": "StringLiteral",
+        "min_length": 3,
+        "resolve_reference_form": true
+      }
+    },
+    {
+      "path": "$.regions",
+      "constraints": {
+        "required": true,
+        "type": "ListNode",
+        "datatype": "stringList"
+      }
+    },
+    {
+      "path": "$.regions[*]",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral",
+        "min_length": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+aeon:header = {
+  version = "1"
+  profile = "aeon.gp.profile.v1"
+}
+
+app:config = {
+  name:string = "Aurora"
+  port:int32 = 8080
+  region = ~regions[0]
+  debug:boolean = true
+}
+
+regions:stringList = [
+  "ap-southeast-2"
+]

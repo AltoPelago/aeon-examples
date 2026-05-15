@@ -1,0 +1,33 @@
+aeos:schema = {
+  id = "altopelago.schema-policy-showcase.literal-region.v1"
+  version = "1"
+  world = "open"
+
+  rules = {
+    "$.app" = {
+      required = true
+      type = "ObjectNode"
+      datatype = "config"
+    }
+
+    "$.app.name" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 1
+    }
+
+    "$.app.port" = {
+      required = true
+      type = "IntegerLiteral"
+      sign = "unsigned"
+      min_value = "1"
+      max_value = "65535"
+    }
+
+    "$.app.region" = {
+      required = true
+      type = "StringLiteral"
+      min_length = 3
+    }
+  }
+}

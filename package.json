@@ -1,0 +1,13 @@
+{
+  "name": "aeon-examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "bash scripts/cleanup-public.sh --write",
+    "clean:check": "bash scripts/cleanup-public.sh --check",
+    "check:local-paths": "bash scripts/check-no-local-paths.sh",
+    "check:npm-install-policy": "node scripts/check-npm-install-policy.mjs",
+    "check:npm-package-age": "node scripts/check-npm-package-age.mjs",
+    "precommit": "bash scripts/pre-commit-check.sh"
+  }
+}

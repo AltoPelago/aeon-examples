@@ -1,0 +1,21 @@
+aeon:header = {
+  encoding:string = "utf-8"
+  mode:string = "loose"
+  profile:string = "aeon.gp.profile.v1"
+  version = "1"
+}
+
+app:string = "todo"
+version = 1
+todos = [
+  {
+    id:string = "todo-1"
+    title:string = "Import this AEON todo list"
+    done:boolean = true
+  }
+  {
+    id:string = "todo-2"
+    title:string = "Download an updated todos.aeon file"
+    done:boolean = false
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "null-inline-comment",
+    "source": "n10:null = !none//Null\n",
+    "validationMode": "strict",
+    "canonicalContains": ["n10:null = !none"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.n10"],
+    "eventTypes": ["NullLiteral"]
+  },
+  {
+    "name": "braced-unicode-escapes",
+    "source": "string014:string = '\\u2B62 \\u{10908} \\u{2B95} \\u{2B91}'\nstring015:string = \"\\u2B62 \\u{10908} \\u{2B95} \\u{2B91}\"\nstring016:string = `\\u2B62 \\u{10908} \\u{2B95} \\u{2B91}`\n",
+    "validationMode": "strict",
+    "canonicalContains": ["⭢ 𐤈 ⮕ ⮑"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.string014", "$.string015", "$.string016"],
+    "eventTypes": ["StringLiteral", "StringLiteral", "StringLiteral"]
+  },
+  {
+    "name": "reference-whitespace-after-sigils",
+    "source": "order:o = {\n  total:n = 2\n}\nclone:n = ~ order.total\npointer:n = ~> order.total\n",
+    "validationMode": "strict",
+    "canonicalContains": ["~order.total", "~>order.total"],
+    "errorCodes": ["FINALIZE_UNRESOLVED_REFERENCE"],
+    "warningCodes": [],
+    "eventPaths": ["$.order", "$.order.total", "$.clone", "$.pointer"],
+    "eventTypes": ["ObjectNode", "NumberLiteral", "CloneReference", "PointerReference"]
+  },
+  {
+    "name": "infinity-finalize-profile-diagnostic",
+    "source": "top:infinity = Infinity\n",
+    "validationMode": "custom",
+    "canonicalContains": ["top:infinity = Infinity"],
+    "errorCodes": ["FINALIZE_JSON_PROFILE_INFINITY"],
+    "warningCodes": [],
+    "eventPaths": ["$.top"],
+    "eventTypes": ["InfinityLiteral"]
+  },
+  {
+    "name": "toggle-literals",
+    "source": "enabled:toggle = on\ndisabled:toggle = off\n",
+    "validationMode": "strict",
+    "canonicalContains": ["enabled:toggle = on", "disabled:toggle = off"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.enabled", "$.disabled"],
+    "eventTypes": ["ToggleLiteral", "ToggleLiteral"]
+  },
+  {
+    "name": "binding-and-indexed-child-attributes",
+    "source": "width@{x:string = \"cm\"}:list = [@{unit:string = \"cm\"} = 3]\n",
+    "validationMode": "strict",
+    "canonicalContains": ["width@{x:string = \"cm\"}:list = [@{unit:string = \"cm\"} = 3]"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.width", "$.width[0]"],
+    "eventTypes": ["ListNode", "NumberLiteral"]
+  },
+  {
+    "name": "clone-materialization",
+    "source": "source = {\n  value = 7\n}\ncopy = ~source\n",
+    "validationMode": "loose",
+    "canonicalContains": ["copy = ~source"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.source", "$.source.value", "$.copy"],
+    "eventTypes": ["ObjectNode", "NumberLiteral", "CloneReference"]
+  },
+  {
+    "name": "loose-infinity-warning",
+    "source": "top:infinity = Infinity\n",
+    "validationMode": "loose",
+    "canonicalContains": ["top:infinity = Infinity"],
+    "errorCodes": [],
+    "warningCodes": ["FINALIZE_JSON_PROFILE_INFINITY"],
+    "eventPaths": ["$.top"],
+    "eventTypes": ["InfinityLiteral"]
+  },
+  {
+    "name": "custom-datatype-string",
+    "source": "accent:brandcolor = \"neon-sunrise\"\n",
+    "validationMode": "custom",
+    "canonicalContains": ["accent:brandcolor = \"neon-sunrise\""],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.accent"],
+    "eventTypes": ["StringLiteral"]
+  }
+]

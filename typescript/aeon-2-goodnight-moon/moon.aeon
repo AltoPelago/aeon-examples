@@ -1,0 +1,11 @@
+aeon:header = {
+    mode:string = "strict"
+}
+
+moon:greeting = {
+    version:ver[.] = ^1.0.0
+    daytime:string = "Good day, Moon"
+    nighttime:string = "Goodnight, Moon"
+    hoursBeforeMidnight:number = 4
+    hoursAfterMidnight:number = 5
+}

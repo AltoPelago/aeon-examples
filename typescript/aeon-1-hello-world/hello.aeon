@@ -1,0 +1,5 @@
+aeon:header = {
+  mode:string = "strict"
+}
+
+greeting:string = "Hello, World from AEON!"

@@ -1,0 +1,22 @@
+{
+  "name": "aeon-alignment-playground",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:playground": "node --test ./tests/playground-processor.test.js"
+  },
+  "dependencies": {
+    "@altopelago/aeon-annotation-stream": "0.9.0",
+    "@altopelago/aeon-canonical": "0.9.0",
+    "@altopelago/aeon-core": "0.9.0",
+    "@altopelago/aeon-finalize": "0.9.0",
+    "@altopelago/aeon-wasm": "0.9.0"
+  },
+  "devDependencies": {
+    "vite": "7.3.1"
+  }
+}
