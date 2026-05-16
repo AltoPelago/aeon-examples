@@ -29,7 +29,6 @@ for (const fixture of fixtures) {
     const result = await processWithTypeScriptCore(
       fixture.source,
       buildOptions(fixture.validationMode),
-      null,
     );
 
     for (const expected of fixture.canonicalContains ?? []) {
@@ -60,11 +59,10 @@ for (const fixture of fixtures) {
 for (const fixture of fixtures) {
   test(`rust wasm matches typescript playground output: ${fixture.name}`, async () => {
     const options = buildOptions(fixture.validationMode);
-    const typescript = await processWithTypeScriptCore(fixture.source, options, null);
+    const typescript = await processWithTypeScriptCore(fixture.source, options);
     const rust = await processWithRustWasm(
       fixture.source,
       options,
-      null,
       readFileSync(WASM_ARTIFACT),
     );
 
@@ -81,7 +79,6 @@ test('typescript playground exposes structured annotation stream records', async
   const result = await processWithTypeScriptCore(
     '//# document note\n//@ inline hint\na:string = "ok"\n',
     buildOptions('strict'),
-    null,
   );
 
   assert.equal(result.errors.length, 0);
@@ -99,7 +96,6 @@ test('typescript playground finalizes anonymous attributed children', async () =
   const result = await processWithTypeScriptCore(
     'width:list = [@{unit:string = "cm"} = 3]\n',
     buildOptions('strict'),
-    null,
   );
 
   assert.equal(result.errors.length, 0);
@@ -121,7 +117,6 @@ test('typescript playground projects binding and child attributes separately', a
   const result = await processWithTypeScriptCore(
     'width@{x:string = "cm"}:list = [@{unit:string = "cm"} = 3]\n',
     buildOptions('strict'),
-    null,
   );
 
   assert.equal(result.errors.length, 0);
@@ -144,7 +139,6 @@ test('rust wasm playground adapter emits the normalized engine shape', async () 
   const result = await processWithRustWasm(
     'state:toggle = on\n',
     buildOptions('strict'),
-    null,
     readFileSync(WASM_ARTIFACT),
   );
 

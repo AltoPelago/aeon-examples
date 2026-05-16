@@ -58,5 +58,4 @@ npm run test:playground
 - The frontend uses published `@altopelago/aeon-*` package versions.
 - Rust comparison uses `@altopelago/aeon-wasm`.
 - AEON open/save uses browser file and download APIs.
-- Neon wrapper controls are visible only as alignment-context settings; container read/write belongs in a separate desktop wrapper example.
 - Schema-authoring mode can be layered on later without changing the engine comparison contract.

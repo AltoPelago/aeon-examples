@@ -54,10 +54,7 @@
               <button id="file-open" type="button">Open AEON</button>
               <button id="file-save" type="button">Save AEON</button>
               <button id="file-save-as" type="button">Save AEON As</button>
-              <button id="file-open-neon" type="button">Open Neon</button>
-              <button id="file-save-neon" type="button">Save Neon</button>
               <button id="import-image-base64" type="button">Import Image As Base64</button>
-              <button id="import-image-attachment" type="button">Attach Image To Neon</button>
             </div>
 
             <div class="file-card">
@@ -66,19 +63,8 @@
             </div>
 
             <div class="file-card">
-              <p class="file-label">Current Neon File</p>
-              <p id="current-neon-path" class="file-path">No Neon file opened or saved yet</p>
-            </div>
-
-            <div class="file-card">
-              <p class="file-label">Neon Attachments</p>
-              <p id="attachment-copy" class="file-copy">No image attachments are queued for Neon packaging.</p>
-              <div id="attachment-list" class="attachment-list"></div>
-            </div>
-
-            <div class="file-card">
               <p class="file-label">What This Does</p>
-              <p class="file-copy">Open AEON loads an `.aeon` file into the Source tab with browser file APIs. Save AEON downloads the current Source content. Neon container read/write is intentionally left to a separate desktop wrapper example. Image import can append AEON base64 text into Source.</p>
+              <p class="file-copy">Open AEON loads an `.aeon` file into the Source tab with browser file APIs. Save AEON downloads the current Source content. Image import can append AEON base64 text into Source.</p>
             </div>
           </div>
 
@@ -125,42 +111,6 @@
                   <option value="header">header</option>
                 </select>
               </label>
-
-              <label>
-                <span>Neon encoding</span>
-                <select id="neon-encoding">
-                  <option value="2p6b-aeon" selected>2p6b-aeon</option>
-                  <option value="2p6b-gp">2p6b-gp</option>
-                  <option value="3p6b">3p6b</option>
-                  <option value="utf-8">utf-8</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Neon compression</span>
-                <select id="neon-compression">
-                  <option value="none" selected>none</option>
-                  <option value="race">race</option>
-                  <option value="deflate">deflate</option>
-                  <option value="brotli">brotli</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Neon checksum</span>
-                <select id="neon-checksum">
-                  <option value="false" selected>off</option>
-                  <option value="true">on</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Neon magic</span>
-                <select id="neon-magic">
-                  <option value="present" selected>present</option>
-                  <option value="omitted">omitted</option>
-                </select>
-              </label>
             </div>
 
             <label class="stack-field">
@@ -177,7 +127,6 @@
               <button id="tab-finalized" class="tab" type="button">Finalized JSON</button>
               <button id="tab-annotations" class="tab" type="button">Annotation Stream</button>
               <button id="tab-comparison" class="tab" type="button">Comparison</button>
-              <button id="tab-neon" class="tab" type="button">Neon Wrapper</button>
             </div>
           </div>
           <p id="run-meta" class="meta-line">processor: typescript · materialization: all</p>
@@ -193,73 +142,6 @@
         </section>
       </main>
     </div>
-
-    <dialog id="neon-save-dialog" class="overlay-dialog">
-      <form method="dialog" class="dialog-card">
-        <div class="dialog-head">
-          <h2>Save Neon File</h2>
-          <p class="dialog-copy">Choose the wrapper options to use for this `.neon` save.</p>
-        </div>
-
-        <div class="controls-grid">
-          <label>
-            <span>Neon encoding</span>
-            <select id="dialog-neon-encoding">
-              <option value="2p6b-aeon" selected>2p6b-aeon</option>
-              <option value="2p6b-gp">2p6b-gp</option>
-              <option value="3p6b">3p6b</option>
-              <option value="utf-8">utf-8</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Neon compression</span>
-            <select id="dialog-neon-compression">
-              <option value="none" selected>none</option>
-              <option value="race">race</option>
-              <option value="deflate">deflate</option>
-              <option value="brotli">brotli</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Neon checksum</span>
-            <select id="dialog-neon-checksum">
-              <option value="false" selected>off</option>
-              <option value="true">on</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Neon magic</span>
-            <select id="dialog-neon-magic">
-              <option value="present" selected>present</option>
-              <option value="omitted">omitted</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="dialog-actions">
-          <button value="cancel" type="submit">Cancel</button>
-          <button id="neon-save-confirm" class="primary" value="default" type="button">Save Neon</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="neon-stats-dialog" class="overlay-dialog">
-      <form method="dialog" class="dialog-card">
-        <div class="dialog-head">
-          <h2>Neon Save Stats</h2>
-          <p class="dialog-copy">The file has been written. Here are the container details that came back from the Neon runtime.</p>
-        </div>
-
-        <pre id="neon-stats-output" class="dialog-pre"></pre>
-
-        <div class="dialog-actions">
-          <button class="primary" value="close" type="submit">Close</button>
-        </div>
-      </form>
-    </dialog>
 
     <script type="module" src="/src/main.js"></script>
   </body>

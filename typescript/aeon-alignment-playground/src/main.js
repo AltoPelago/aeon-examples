@@ -21,7 +21,6 @@ const outputState = {
   finalized: '',
   annotations: '',
   comparison: '',
-  neon: '',
   view: 'canonical',
 };
 
@@ -36,10 +35,6 @@ const SAMPLE_PRESETS = {
       materializationMode: 'all',
       finalizeScope: 'payload',
       includePaths: '',
-      neonEncoding: '2p6b-aeon',
-      neonCompression: 'none',
-      neonChecksum: 'false',
-      neonMagic: 'present',
     },
   },
   loose: {
@@ -65,10 +60,6 @@ app = {
       materializationMode: 'all',
       finalizeScope: 'payload',
       includePaths: '',
-      neonEncoding: '2p6b-aeon',
-      neonCompression: 'none',
-      neonChecksum: 'false',
-      neonMagic: 'present',
     },
   },
   custom: {
@@ -93,17 +84,11 @@ app:object = {
       materializationMode: 'all',
       finalizeScope: 'payload',
       includePaths: '',
-      neonEncoding: '2p6b-aeon',
-      neonCompression: 'none',
-      neonChecksum: 'false',
-      neonMagic: 'present',
     },
   },
 };
 
 let currentFilePath = null;
-let currentNeonPath = null;
-let neonAttachments = [];
 let lastProcessor = 'typescript';
 
 const sourceEl = document.getElementById('source');
@@ -116,10 +101,6 @@ const attributeDepthEl = document.getElementById('attribute-depth');
 const genericDepthEl = document.getElementById('generic-depth');
 const materializationModeEl = document.getElementById('materialization-mode');
 const finalizeScopeEl = document.getElementById('finalize-scope');
-const neonEncodingEl = document.getElementById('neon-encoding');
-const neonCompressionEl = document.getElementById('neon-compression');
-const neonChecksumEl = document.getElementById('neon-checksum');
-const neonMagicEl = document.getElementById('neon-magic');
 const includePathsEl = document.getElementById('include-paths');
 const outputEl = document.getElementById('output');
 const diagnosticsEl = document.getElementById('diagnostics');
@@ -131,7 +112,6 @@ const tabCanonicalBtn = document.getElementById('tab-canonical');
 const tabFinalizedBtn = document.getElementById('tab-finalized');
 const tabAnnotationsBtn = document.getElementById('tab-annotations');
 const tabComparisonBtn = document.getElementById('tab-comparison');
-const tabNeonBtn = document.getElementById('tab-neon');
 const tabSourceBtn = document.getElementById('tab-source');
 const tabFileBtn = document.getElementById('tab-file');
 const tabOptionsBtn = document.getElementById('tab-options');
@@ -144,22 +124,8 @@ const sourceTabInsertsTabEl = document.getElementById('source-tab-inserts-tab');
 const fileOpenBtn = document.getElementById('file-open');
 const fileSaveBtn = document.getElementById('file-save');
 const fileSaveAsBtn = document.getElementById('file-save-as');
-const fileOpenNeonBtn = document.getElementById('file-open-neon');
-const fileSaveNeonBtn = document.getElementById('file-save-neon');
 const importImageBase64Btn = document.getElementById('import-image-base64');
-const importImageAttachmentBtn = document.getElementById('import-image-attachment');
 const currentFilePathEl = document.getElementById('current-file-path');
-const currentNeonPathEl = document.getElementById('current-neon-path');
-const attachmentCopyEl = document.getElementById('attachment-copy');
-const attachmentListEl = document.getElementById('attachment-list');
-const neonSaveDialogEl = document.getElementById('neon-save-dialog');
-const neonStatsDialogEl = document.getElementById('neon-stats-dialog');
-const dialogNeonEncodingEl = document.getElementById('dialog-neon-encoding');
-const dialogNeonCompressionEl = document.getElementById('dialog-neon-compression');
-const dialogNeonChecksumEl = document.getElementById('dialog-neon-checksum');
-const dialogNeonMagicEl = document.getElementById('dialog-neon-magic');
-const neonSaveConfirmBtn = document.getElementById('neon-save-confirm');
-const neonStatsOutputEl = document.getElementById('neon-stats-output');
 const filePickerEl = document.createElement('input');
 filePickerEl.type = 'file';
 filePickerEl.accept = '.aeon,text/plain';
@@ -169,12 +135,6 @@ document.body.append(filePickerEl);
 function setStatus(el, text, tone) {
   el.textContent = text;
   el.dataset.tone = tone;
-}
-
-function showUnavailable(action, detail = `${action} is not part of the browser alignment playground.`) {
-  setStatus(runStatusEl, `${action} unavailable`, 'warn');
-  diagnosticsEl.textContent = `1. ${detail}`;
-  setStatus(diagStatusEl, 'browser mode', 'warn');
 }
 
 function readPositiveInt(el, fallback) {
@@ -201,7 +161,6 @@ function setOutputView(view) {
   tabFinalizedBtn.classList.toggle('is-active', view === 'finalized');
   tabAnnotationsBtn.classList.toggle('is-active', view === 'annotations');
   tabComparisonBtn.classList.toggle('is-active', view === 'comparison');
-  tabNeonBtn.classList.toggle('is-active', view === 'neon');
   outputEl.textContent = outputState[view] || '';
   if (view === 'canonical') {
     viewMetaEl.textContent = describeCanonicalText(outputState.canonical || '');
@@ -211,8 +170,6 @@ function setOutputView(view) {
     viewMetaEl.textContent = 'Annotation Stream reflects the structured comments found in the current source.';
   } else if (view === 'comparison') {
     viewMetaEl.textContent = 'Comparison shows normalized TypeScript and Rust WASM outputs for the same source and options.';
-  } else if (view === 'neon') {
-    viewMetaEl.textContent = 'Neon Wrapper shows the encoded container summary derived from the current source and wrapper settings.';
   }
 }
 
@@ -229,19 +186,6 @@ function refreshCurrentFilePath() {
   currentFilePathEl.textContent = currentFilePath ?? 'Unsaved playground buffer';
 }
 
-function refreshCurrentNeonPath() {
-  currentNeonPathEl.textContent = currentNeonPath ?? 'No Neon file opened or saved yet';
-}
-
-function currentNeonSettings() {
-  return {
-    encoding: neonEncodingEl.value,
-    compression: neonCompressionEl.value,
-    checksum: neonChecksumEl.value === 'true',
-    magic: neonMagicEl.value,
-  };
-}
-
 function sanitizeBindingName(value) {
   const cleaned = value
     .toLowerCase()
@@ -251,51 +195,6 @@ function sanitizeBindingName(value) {
     return 'image_asset';
   }
   return /^[a-z_]/.test(cleaned) ? cleaned : `image_${cleaned}`;
-}
-
-function summarizeAttachmentState() {
-  return neonAttachments.map((attachment) => ({
-    id: attachment.id,
-    name: attachment.name,
-    mime: attachment.mime,
-    bytes: attachment.byteLength,
-    mode: 'attachment',
-  }));
-}
-
-function renderAttachmentList() {
-  attachmentListEl.innerHTML = '';
-  if (neonAttachments.length === 0) {
-    attachmentCopyEl.textContent = 'No image attachments are queued for Neon packaging.';
-    return;
-  }
-
-  attachmentCopyEl.textContent = `${neonAttachments.length} image attachment${neonAttachments.length === 1 ? '' : 's'} will be packaged the next time you save as Neon.`;
-
-  for (const attachment of neonAttachments) {
-    const item = document.createElement('div');
-    item.className = 'attachment-item';
-
-    const meta = document.createElement('div');
-    meta.className = 'attachment-meta';
-
-    const name = document.createElement('div');
-    name.className = 'attachment-name';
-    name.textContent = attachment.name;
-
-    const detail = document.createElement('div');
-    detail.className = 'attachment-detail';
-    detail.textContent = `${attachment.mime} · ${attachment.byteLength} bytes`;
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.textContent = 'Remove';
-    removeBtn.dataset.removeAttachment = attachment.id;
-
-    meta.append(name, detail);
-    item.append(meta, removeBtn);
-    attachmentListEl.append(item);
-  }
 }
 
 function buildImageBase64Snippet(image) {
@@ -310,81 +209,6 @@ function appendSourceSnippet(snippet) {
   syncSourceHighlight();
   setStatus(runStatusEl, 'source updated', 'ok');
   setStatus(diagStatusEl, 'stale', 'warn');
-}
-
-function sourceModeLabels(source) {
-  const labels = [];
-  if (/:base64(?:\s*=)?/.test(source)) {
-    labels.push('base64');
-  }
-  if (/:inline(?:\s*=)?/.test(source)) {
-    labels.push('inline');
-  }
-  if (/:embed(?:\s*=)?/.test(source)) {
-    labels.push('embed');
-  }
-  if (neonAttachments.length > 0) {
-    labels.push('attachment');
-  }
-  return labels;
-}
-
-function renderNeonComparison(response) {
-  const summary = response.summary ?? {};
-  const sourceModes = summary.sourceModes ?? sourceModeLabels(sourceEl.value);
-  const lines = [
-    'Neon Stress Summary',
-    `source bytes: ${summary.sourceBytes ?? 'n/a'}`,
-    `wrapped bytes: ${summary.wrappedBytes ?? 'n/a'}`,
-    `overhead bytes: ${summary.overheadBytes ?? 'n/a'}`,
-    `ratio: ${summary.ratio ?? 'n/a'}`,
-    `encoding: ${summary.encoding ?? 'n/a'}`,
-    `compression: ${summary.compression ?? 'n/a'}`,
-    `magic: ${summary.magic ?? 'n/a'}`,
-    `checksum: ${summary.hasChecksum ? 'on' : 'off'}`,
-    `directory mode: ${summary.hasDirectory ? 'yes' : 'no'}`,
-    `attachments: ${summary.attachmentCount ?? neonAttachments.length}`,
-    `aeon source modes: ${sourceModes.length > 0 ? sourceModes.join(', ') : 'plain text'}`,
-    `text round-trip: ${summary.textRoundTrip ?? 'unknown'}`,
-  ];
-
-  if (response.note) {
-    lines.push(`note: ${response.note}`);
-  }
-
-  lines.push('');
-  lines.push('Raw Response');
-  lines.push(JSON.stringify({
-    attachments: summarizeAttachmentState(),
-    wrapper: response,
-  }, null, 2));
-
-  return lines.join('\n');
-}
-
-function formatNeonOutput(response) {
-  return renderNeonComparison(response);
-}
-
-function syncNeonSaveDialogFromOptions() {
-  dialogNeonEncodingEl.value = neonEncodingEl.value;
-  dialogNeonCompressionEl.value = neonCompressionEl.value;
-  dialogNeonChecksumEl.value = neonChecksumEl.value;
-  dialogNeonMagicEl.value = neonMagicEl.value;
-}
-
-function applyNeonDialogSettingsToOptions() {
-  neonEncodingEl.value = dialogNeonEncodingEl.value;
-  neonCompressionEl.value = dialogNeonCompressionEl.value;
-  neonChecksumEl.value = dialogNeonChecksumEl.value;
-  neonMagicEl.value = dialogNeonMagicEl.value;
-}
-
-function showNeonStats(result) {
-  neonStatsOutputEl.textContent = JSON.stringify(result, null, 2);
-  if (!neonStatsDialogEl.open) {
-    neonStatsDialogEl.showModal();
-  }
 }
 
 function formatPosition(span) {
@@ -808,10 +632,9 @@ function renderResult(result, options) {
     : 'Unavailable in "none" mode.';
   outputState.annotations = JSON.stringify(result.annotations ?? [], null, 2);
   outputState.comparison = '';
-  outputState.neon = result.neon ?? 'Neon wrapper not generated.';
   setOutputView(outputState.view);
 
-  runMetaEl.textContent = `processor: ${options.processor} · materialization: ${options.materializationMode} · finalize scope: ${describeFinalizeScope(options.finalizeScope)} · validation mode: ${options.validationMode} · neon: ${options.neonEncoding}/${options.neonCompression} · display source: raw input · validation source: ${describeValidationSource(options.validationMode)}`;
+  runMetaEl.textContent = `processor: ${options.processor} · materialization: ${options.materializationMode} · finalize scope: ${describeFinalizeScope(options.finalizeScope)} · validation mode: ${options.validationMode} · display source: raw input · validation source: ${describeValidationSource(options.validationMode)}`;
 
   if (result.errors.length > 0) {
     diagnosticsEl.textContent = result.errors.map(formatDiagnostic).join('\n');
@@ -921,32 +744,18 @@ function renderEngineComparison(tsResult, rustResult, options) {
   return lines.join('\n');
 }
 
-async function buildNeonSummary(source, options) {
-  return [
-    'Neon wrapper unavailable in the browser alignment playground.',
-    '',
-    'Current wrapper settings',
-    `encoding: ${options.neonEncoding}`,
-    `compression: ${options.neonCompression}`,
-    `checksum: ${options.neonChecksum ? 'on' : 'off'}`,
-    `magic: ${options.neonMagic}`,
-    `source bytes: ${new TextEncoder().encode(source).length}`,
-  ].join('\n');
-}
-
 async function processWithTypeScript(source, options) {
-  const neon = await buildNeonSummary(source, options);
-  return processWithTypeScriptCore(source, options, neon);
+  return processWithTypeScriptCore(source, options);
 }
 
 async function processWithRust(source, options) {
-  return processWithRustWasm(source, options, null);
+  return processWithRustWasm(source, options);
 }
 
 async function compareEngines(source, options) {
   const [tsResult, rustResult] = await Promise.all([
-    processWithTypeScriptCore(source, options, null),
-    processWithRustWasm(source, options, null),
+    processWithTypeScriptCore(source, options),
+    processWithRustWasm(source, options),
   ]);
   return { tsResult, rustResult };
 }
@@ -961,10 +770,6 @@ async function run(processor) {
     maxGenericDepth: readPositiveInt(genericDepthEl, 1),
     materializationMode: materializationModeEl.value,
     finalizeScope: finalizeScopeEl.value,
-    neonEncoding: neonEncodingEl.value,
-    neonCompression: neonCompressionEl.value,
-    neonChecksum: neonChecksumEl.value === 'true',
-    neonMagic: neonMagicEl.value,
     includePaths: readIncludePaths(),
   };
 
@@ -973,7 +778,6 @@ async function run(processor) {
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
-    outputState.neon = '';
     setOutputView(outputState.view);
     diagnosticsEl.textContent = '1. Projected materialization requires at least one include path.';
     setStatus(runStatusEl, 'error', 'error');
@@ -994,7 +798,6 @@ async function run(processor) {
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
-    outputState.neon = '';
     setOutputView(outputState.view);
     diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
     setStatus(runStatusEl, 'error', 'error');
@@ -1011,10 +814,6 @@ async function runComparison() {
     maxGenericDepth: readPositiveInt(genericDepthEl, 1),
     materializationMode: materializationModeEl.value,
     finalizeScope: finalizeScopeEl.value,
-    neonEncoding: neonEncodingEl.value,
-    neonCompression: neonCompressionEl.value,
-    neonChecksum: neonChecksumEl.value === 'true',
-    neonMagic: neonMagicEl.value,
     includePaths: readIncludePaths(),
   };
 
@@ -1023,7 +822,6 @@ async function runComparison() {
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
-    outputState.neon = '';
     setOutputView('comparison');
     diagnosticsEl.textContent = '1. Projected materialization requires at least one include path.';
     setStatus(runStatusEl, 'error', 'error');
@@ -1041,7 +839,6 @@ async function runComparison() {
       ? JSON.stringify(tsResult.finalized.document, null, 2)
       : 'Unavailable in "none" mode.';
     outputState.annotations = JSON.stringify(tsResult.annotations ?? [], null, 2);
-    outputState.neon = 'Neon wrapper not generated during engine comparison.';
     outputState.comparison = renderEngineComparison(tsResult, rustResult, options);
     setOutputView('comparison');
 
@@ -1057,7 +854,6 @@ async function runComparison() {
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
-    outputState.neon = '';
     setOutputView('comparison');
     diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
     setStatus(runStatusEl, 'error', 'error');
@@ -1073,10 +869,6 @@ function applySettings(settings) {
   materializationModeEl.value = settings.materializationMode;
   finalizeScopeEl.value = settings.finalizeScope;
   includePathsEl.value = settings.includePaths;
-  neonEncodingEl.value = settings.neonEncoding;
-  neonCompressionEl.value = settings.neonCompression;
-  neonChecksumEl.value = settings.neonChecksum;
-  neonMagicEl.value = settings.neonMagic;
   includePathsEl.disabled = settings.materializationMode !== 'projected';
 }
 
@@ -1087,11 +879,7 @@ async function applySample(name) {
   }
 
   currentFilePath = null;
-  currentNeonPath = null;
-  neonAttachments = [];
   refreshCurrentFilePath();
-  refreshCurrentNeonPath();
-  renderAttachmentList();
   sourceEl.value = sample.source;
   applySettings(sample.settings);
   syncSourceHighlight();
@@ -1111,9 +899,7 @@ async function openAeonFile() {
       return;
     }
     currentFilePath = file.name;
-    neonAttachments = [];
     refreshCurrentFilePath();
-    renderAttachmentList();
     sourceEl.value = await file.text();
     syncSourceHighlight();
     setStatus(runStatusEl, 'file opened', 'ok');
@@ -1144,23 +930,7 @@ async function saveAeonFile(saveAs = false) {
   }
 }
 
-async function openNeonFile() {
-  showUnavailable('Open Neon');
-}
-
-function showNeonSaveDialog() {
-  showUnavailable('Save Neon');
-}
-
-async function saveNeonFile() {
-  showUnavailable('Save Neon');
-}
-
-async function chooseImageImport(mode) {
-  if (mode !== 'base64') {
-    showUnavailable('Attach Image To Neon');
-    return;
-  }
+async function chooseImageImport() {
   try {
     const picker = document.createElement('input');
     picker.type = 'file';
@@ -1224,7 +994,6 @@ tabCanonicalBtn.addEventListener('click', () => setOutputView('canonical'));
 tabFinalizedBtn.addEventListener('click', () => setOutputView('finalized'));
 tabAnnotationsBtn.addEventListener('click', () => setOutputView('annotations'));
 tabComparisonBtn.addEventListener('click', () => setOutputView('comparison'));
-tabNeonBtn.addEventListener('click', () => setOutputView('neon'));
 tabSourceBtn.addEventListener('click', () => setInputView('source'));
 tabFileBtn.addEventListener('click', () => setInputView('file'));
 tabOptionsBtn.addEventListener('click', () => setInputView('options'));
@@ -1246,49 +1015,8 @@ fileSaveBtn.addEventListener('click', () => {
 fileSaveAsBtn.addEventListener('click', () => {
   void saveAeonFile(true);
 });
-fileOpenNeonBtn.addEventListener('click', () => {
-  void openNeonFile();
-});
-fileSaveNeonBtn.addEventListener('click', () => {
-  showNeonSaveDialog();
-});
 importImageBase64Btn.addEventListener('click', () => {
-  void chooseImageImport('base64');
-});
-importImageAttachmentBtn.addEventListener('click', () => {
-  void chooseImageImport('attachment');
-});
-attachmentListEl.addEventListener('click', (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-  const attachmentId = target.dataset.removeAttachment;
-  if (!attachmentId) {
-    return;
-  }
-  neonAttachments = neonAttachments.filter((attachment) => attachment.id !== attachmentId);
-  renderAttachmentList();
-  setStatus(runStatusEl, 'attachment removed', 'ok');
-});
-neonSaveConfirmBtn.addEventListener('click', () => {
-  void saveNeonFile();
-});
-neonEncodingEl.addEventListener('change', () => {
-  setStatus(runStatusEl, 'stale', 'warn');
-  setStatus(diagStatusEl, 'stale', 'warn');
-});
-neonCompressionEl.addEventListener('change', () => {
-  setStatus(runStatusEl, 'stale', 'warn');
-  setStatus(diagStatusEl, 'stale', 'warn');
-});
-neonChecksumEl.addEventListener('change', () => {
-  setStatus(runStatusEl, 'stale', 'warn');
-  setStatus(diagStatusEl, 'stale', 'warn');
-});
-neonMagicEl.addEventListener('change', () => {
-  setStatus(runStatusEl, 'stale', 'warn');
-  setStatus(diagStatusEl, 'stale', 'warn');
+  void chooseImageImport();
 });
 
 sourceEl.value = SAMPLE_PRESETS.strict.source;
@@ -1296,8 +1024,6 @@ applySettings(SAMPLE_PRESETS.strict.settings);
 setInputView('source');
 setOutputView('canonical');
 refreshCurrentFilePath();
-refreshCurrentNeonPath();
-renderAttachmentList();
 syncSourceHighlight();
 setStatus(runStatusEl, 'sample loaded', 'ok');
 setStatus(diagStatusEl, 'waiting', 'warn');

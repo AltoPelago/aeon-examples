@@ -109,7 +109,7 @@ function normalizeAnnotation(annotation) {
   };
 }
 
-function normalizeEngineResult(engine, result, neon = null) {
+function normalizeEngineResult(engine, result) {
   const errors = (result.errors ?? []).map(normalizeDiagnostic);
   const warnings = (result.warnings ?? []).map(normalizeDiagnostic);
   const canonicalText = typeof result.canonical === 'string'
@@ -134,7 +134,6 @@ function normalizeEngineResult(engine, result, neon = null) {
     diagnostics: { errors, warnings },
     errors,
     warnings,
-    neon,
   };
 }
 
@@ -183,7 +182,7 @@ function buildTsAnnotations(source, options) {
   return buildAnnotationStreamFromSource(source, annotationCompile.events);
 }
 
-export async function processWithTypeScriptCore(source, options, neon = null) {
+export async function processWithTypeScriptCore(source, options) {
   const canonical = canonicalize(source, {
     maxSeparatorDepth: options.maxSeparatorDepth,
     maxAttributeDepth: options.maxAttributeDepth,
@@ -199,7 +198,7 @@ export async function processWithTypeScriptCore(source, options, neon = null) {
       events: [],
       warnings: [],
       errors: canonical.errors,
-    }, neon);
+    });
   }
 
   if (options.validationMode === 'none') {
@@ -210,7 +209,7 @@ export async function processWithTypeScriptCore(source, options, neon = null) {
       events: [],
       warnings: [],
       errors: [],
-    }, neon);
+    });
   }
 
   const compileResult = compile(applyValidationMode(source, options.validationMode), {
@@ -236,7 +235,7 @@ export async function processWithTypeScriptCore(source, options, neon = null) {
       ),
       warnings: [],
       errors: compileResult.errors,
-    }, neon);
+    });
   }
 
   const finalized = finalizeJson(compileResult.events, {
@@ -266,10 +265,10 @@ export async function processWithTypeScriptCore(source, options, neon = null) {
     ),
     warnings: finalized.meta?.warnings ?? [],
     errors: finalized.meta?.errors ?? [],
-  }, neon);
+  });
 }
 
-export async function processWithRustWasm(source, options, neon = null, initInput = undefined) {
+export async function processWithRustWasm(source, options, initInput = undefined) {
   const runtime = await loadAeonWasm(initInput ?? await loadDefaultWasmInput());
-  return normalizeEngineResult('rust-wasm', runtime.processAeon(source, options), neon);
+  return normalizeEngineResult('rust-wasm', runtime.processAeon(source, options));
 }
