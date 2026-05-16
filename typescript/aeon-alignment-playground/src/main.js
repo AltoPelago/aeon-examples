@@ -656,9 +656,10 @@ function applyValidationMode(source, mode) {
   }
 
   const compileMode = mode === 'loose' ? 'transport' : mode;
-  const structuredHeaderRe = /(aeon:header(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*=(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*\{)([\s\S]*?)(\n\})/m;
-  const shorthandModeRe = /aeon:mode\s*=\s*"[^"]*"/m;
-  const structuredModeRe = /(^[ \t]*mode(?:\s*:[^=\n]+)?\s*=\s*)"[^"]*"/m;
+  const trivia = String.raw`(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*`;
+  const structuredHeaderRe = new RegExp(`(aeon${trivia}:${trivia}header${trivia}=${trivia}\\{)([\\s\\S]*?)(\\n\\})`, 'm');
+  const shorthandModeRe = new RegExp(`aeon${trivia}:${trivia}mode${trivia}=${trivia}"[^"]*"`, 'm');
+  const structuredModeRe = new RegExp(`(^[ \\t]*mode${trivia}(?::[\\s\\S]*?)?${trivia}=${trivia})"[^"]*"`, 'm');
 
   if (structuredHeaderRe.test(source)) {
     return source.replace(structuredHeaderRe, (match, open, body, close) => {

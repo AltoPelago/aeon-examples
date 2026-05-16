@@ -1,16 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import fixtures from '../fixtures/playground-parity.json' with { type: 'json' };
 import { processWithRustWasm, processWithTypeScriptCore } from '../src/playground-processor.js';
 
-const WASM_ARTIFACT = resolve(
+const LOCAL_WASM_ARTIFACT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../aeon/implementations/typescript/packages/wasm/pkg/aeon_wasm_bg.wasm',
+);
+
+const PACKAGE_WASM_ARTIFACT = resolve(
   dirname(fileURLToPath(import.meta.resolve('@altopelago/aeon-wasm'))),
   '../pkg/aeon_wasm_bg.wasm',
 );
+
+const WASM_ARTIFACT = existsSync(LOCAL_WASM_ARTIFACT) ? LOCAL_WASM_ARTIFACT : PACKAGE_WASM_ARTIFACT;
 
 function buildOptions(validationMode) {
   return {
@@ -95,7 +102,7 @@ test('typescript playground exposes structured annotation stream records', async
 test('typescript playground preserves structured headers with comment trivia before the object', async () => {
   const result = await processWithTypeScriptCore(
     [
-      'aeon:header /# #/=   /# #/{',
+      'aeon : header /# #/=   /# #/{',
       '  mode:string = "strict"',
       '  encoding:string = "utf-8"',
       '  profile:string = "aeon.gp.profile.v1"',
@@ -128,6 +135,34 @@ test('typescript playground preserves structured headers with comment trivia bef
       '$.["aeon:version"]',
     ],
   );
+});
+
+test('playground validation mode does not duplicate tokenized structured headers', async () => {
+  const source = [
+    'aeon',
+    ':',
+    'header /# #/=   /# #/{',
+    '  mode:',
+    'string = "strict"',
+    '  encoding:string = "utf-8"',
+    '}',
+  ].join('\n');
+  const options = {
+    ...buildOptions('strict'),
+    finalizeScope: 'full',
+  };
+  const typescript = await processWithTypeScriptCore(source, options);
+  const rust = await processWithRustWasm(source, options, readFileSync(WASM_ARTIFACT));
+
+  assert.deepEqual(typescript.errors, []);
+  assert.deepEqual(rust.errors, []);
+  assert.deepEqual(rust.canonical, typescript.canonical);
+  assert.deepEqual(rust.finalized, typescript.finalized);
+  assert.deepEqual(
+    typescript.events.map((event) => event.path),
+    ['$.["aeon:encoding"]', '$.["aeon:mode"]'],
+  );
+  assert.deepEqual(rust.events, typescript.events);
 });
 
 test('typescript playground finalizes anonymous attributed children', async () => {
