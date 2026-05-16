@@ -41,6 +41,17 @@ during install.
 npm run dev
 ```
 
+To run against the local AEON monorepo builds instead of the published npm
+packages:
+
+```bash
+cd ../../../aeon/implementations/typescript
+pnpm -r build
+pnpm --filter @altopelago/aeon-wasm build:wasm
+cd ../../../aeon-examples/typescript/aeon-alignment-playground
+npm run dev:local
+```
+
 For a production frontend build:
 
 ```bash
@@ -56,6 +67,9 @@ npm run test:playground
 ## Notes
 
 - The frontend uses published `@altopelago/aeon-*` package versions.
+- `npm run dev:local` and `npm run build:local` alias `@altopelago/aeon-*`
+  imports to `../../../aeon/implementations/typescript/packages/*/dist` and the
+  local Rust WASM artifact.
 - Rust comparison uses `@altopelago/aeon-wasm`.
 - AEON open/save uses browser file and download APIs.
 - Schema-authoring mode can be layered on later without changing the engine comparison contract.

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "AEON_PACKAGE_SOURCE=local vite",
     "build": "vite build",
+    "build:local": "AEON_PACKAGE_SOURCE=local vite build",
     "preview": "vite preview",
     "test:playground": "node --test ./tests/playground-processor.test.js"
   },

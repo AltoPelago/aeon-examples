@@ -8,7 +8,7 @@ let defaultWasmInputPromise;
 
 async function loadDefaultWasmInput() {
   defaultWasmInputPromise ??= (async () => {
-    const { default: wasmUrl } = await import('../node_modules/@altopelago/aeon-wasm/pkg/aeon_wasm_bg.wasm?url');
+    const { default: wasmUrl } = await import('@aeon-playground/wasm-artifact');
     const response = await fetch(wasmUrl);
 
     if (!response.ok) {
@@ -106,6 +106,7 @@ function normalizeAnnotation(annotation) {
     raw: annotation.raw,
     span: annotation.span,
     target: annotation.target,
+    placement: annotation.placement ?? null,
   };
 }
 
