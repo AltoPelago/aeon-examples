@@ -92,6 +92,44 @@ test('typescript playground exposes structured annotation stream records', async
   });
 });
 
+test('typescript playground preserves structured headers with comment trivia before the object', async () => {
+  const result = await processWithTypeScriptCore(
+    [
+      'aeon:header /# #/=   /# #/{',
+      '  mode:string = "strict"',
+      '  encoding:string = "utf-8"',
+      '  profile:string = "aeon.gp.profile.v1"',
+      '  version:string = "1"',
+      '}',
+    ].join('\n'),
+    {
+      ...buildOptions('strict'),
+      finalizeScope: 'full',
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.finalized.document, {
+    header: {
+      mode: 'strict',
+      encoding: 'utf-8',
+      profile: 'aeon.gp.profile.v1',
+      version: '1',
+    },
+    payload: {},
+  });
+  assert.deepEqual(
+    result.events.map((event) => event.path),
+    [
+      '$.["aeon:encoding"]',
+      '$.["aeon:mode"]',
+      '$.["aeon:profile"]',
+      '$.["aeon:version"]',
+    ],
+  );
+});
+
 test('typescript playground finalizes anonymous attributed children', async () => {
   const result = await processWithTypeScriptCore(
     'width:list = [@{unit:string = "cm"} = 3]\n',

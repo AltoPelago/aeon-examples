@@ -656,7 +656,7 @@ function applyValidationMode(source, mode) {
   }
 
   const compileMode = mode === 'loose' ? 'transport' : mode;
-  const structuredHeaderRe = /(aeon:header\s*=\s*\{)([\s\S]*?)(\n\})/m;
+  const structuredHeaderRe = /(aeon:header(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*=(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*\{)([\s\S]*?)(\n\})/m;
   const shorthandModeRe = /aeon:mode\s*=\s*"[^"]*"/m;
   const structuredModeRe = /(^[ \t]*mode(?:\s*:[^=\n]+)?\s*=\s*)"[^"]*"/m;
 
