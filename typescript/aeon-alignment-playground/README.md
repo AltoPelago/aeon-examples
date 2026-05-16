@@ -2,8 +2,8 @@
 
 Browser playground for AEON implementation alignment:
 
-- `TypeScript` runs directly in the frontend with the checked-out TS implementation.
-- `Rust` runs in the frontend through the checked-out Rust WASM package.
+- `TypeScript` runs directly in the frontend from published `@altopelago` packages.
+- `Rust` runs in the frontend through the published `@altopelago/aeon-wasm` package.
 - `Compare` runs both engines and reports normalized output matches and mismatches.
 
 It focuses on the shared processing path:
