@@ -7,28 +7,33 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">AEON Alignment Playground</p>
-          <h1>Compare Rust WASM And TypeScript Processing</h1>
-        </div>
-        <div class="status-row">
+      <header class="menu-bar">
+        <span class="menu-title">AEON Alignment Playground</span>
+        <div class="menu-right">
           <span id="run-status" class="pill">idle</span>
           <span id="diag-status" class="pill">waiting</span>
+          <div class="menu-dropdown">
+            <button id="menu-toggle" class="menu-toggle" type="button" aria-label="Open file menu" aria-expanded="false">☰</button>
+            <div id="menu-panel" class="menu-panel" hidden>
+              <button id="file-open" type="button">Open AEON</button>
+              <button id="file-save" type="button">Save AEON</button>
+              <button id="file-save-as" type="button">Save AEON As</button>
+              <button id="import-image-base64" type="button">Import Image As Base64</button>
+              <span id="current-file-path" class="menu-file-path">Unsaved playground buffer</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main class="workspace">
+      <main class="app-shell">
         <section class="panel editor-panel">
-          <div class="panel-header">
-            <div class="tab-row">
-              <button id="tab-source" class="tab is-active" type="button">Source</button>
-              <button id="tab-file" class="tab" type="button">File</button>
-              <button id="tab-options" class="tab" type="button">Options</button>
+          <div class="panel-head">
+            <div class="view-toggle" role="tablist" aria-label="Input view">
+              <button id="tab-source" class="view-tab is-active" type="button">Source</button>
+              <button id="tab-options" class="view-tab" type="button">Options</button>
             </div>
             <div class="action-row">
-              <button id="process-ts" class="primary" type="button">Process TS</button>
+              <button id="process-ts" class="verify-btn" type="button">Process TS</button>
               <button id="process-rust" type="button">Process Rust</button>
               <button id="process-compare" type="button">Compare</button>
             </div>
@@ -49,28 +54,9 @@
             </div>
           </div>
 
-          <div id="pane-file" class="input-pane">
-            <div class="file-actions">
-              <button id="file-open" type="button">Open AEON</button>
-              <button id="file-save" type="button">Save AEON</button>
-              <button id="file-save-as" type="button">Save AEON As</button>
-              <button id="import-image-base64" type="button">Import Image As Base64</button>
-            </div>
-
-            <div class="file-card">
-              <p class="file-label">Current File</p>
-              <p id="current-file-path" class="file-path">Unsaved playground buffer</p>
-            </div>
-
-            <div class="file-card">
-              <p class="file-label">What This Does</p>
-              <p class="file-copy">Open AEON loads an `.aeon` file into the Source tab with browser file APIs. Save AEON downloads the current Source content. Image import can append AEON base64 text into Source.</p>
-            </div>
-          </div>
-
           <div id="pane-options" class="input-pane">
-            <div class="controls-grid">
-              <label>
+            <div class="options-grid">
+              <label class="control-field">
                 <span>Validation mode</span>
                 <select id="validation-mode">
                   <option value="none">none</option>
@@ -80,22 +66,22 @@
                 </select>
               </label>
 
-              <label>
+              <label class="control-field">
                 <span>Separator depth</span>
                 <input id="separator-depth" type="number" min="1" max="16" value="8" />
               </label>
 
-              <label>
+              <label class="control-field">
                 <span>Attribute depth</span>
                 <input id="attribute-depth" type="number" min="1" max="16" value="1" />
               </label>
 
-              <label>
+              <label class="control-field">
                 <span>Generic depth</span>
                 <input id="generic-depth" type="number" min="1" max="16" value="1" />
               </label>
 
-              <label>
+              <label class="control-field">
                 <span>Materialization</span>
                 <select id="materialization-mode">
                   <option value="all" selected>all</option>
@@ -103,7 +89,7 @@
                 </select>
               </label>
 
-              <label>
+              <label class="control-field">
                 <span>Finalize scope</span>
                 <select id="finalize-scope">
                   <option value="payload" selected>payload</option>
@@ -113,35 +99,36 @@
               </label>
             </div>
 
-            <label class="stack-field">
+            <label class="control-field options-wide">
               <span>Include paths</span>
-              <textarea id="include-paths" rows="5" placeholder="$.app.name&#10;$.app.port"></textarea>
+              <textarea id="include-paths" class="micro-editor" rows="5" placeholder="$.app.name&#10;$.app.port"></textarea>
             </label>
           </div>
         </section>
 
         <section class="panel output-panel">
-          <div class="panel-header">
-            <div class="tab-row">
-              <button id="tab-canonical" class="tab is-active" type="button">Canonical AEON</button>
-              <button id="tab-finalized" class="tab" type="button">Finalized JSON</button>
-              <button id="tab-annotations" class="tab" type="button">Annotation Stream</button>
-              <button id="tab-comparison" class="tab" type="button">Comparison</button>
+          <div class="panel-head">
+            <div class="output-head-main">
+              <div class="view-toggle" role="tablist" aria-label="Output view">
+                <button id="tab-canonical" class="view-tab is-active" type="button">Canonical</button>
+                <button id="tab-finalized" class="view-tab" type="button">Finalized</button>
+                <button id="tab-annotations" class="view-tab" type="button">Annotations</button>
+                <button id="tab-comparison" class="view-tab" type="button">Comparison</button>
+              </div>
+              <span id="run-meta" class="output-run-meta">processor: typescript · materialization: all</span>
             </div>
           </div>
-          <p id="run-meta" class="meta-line">processor: typescript · materialization: all</p>
           <p id="view-meta" class="meta-note">Canonical AEON is derived from the raw source. Finalized JSON comes from the validation-mode processing pipeline. Annotation Stream reflects the structured comments found in the current source.</p>
           <pre id="output"></pre>
         </section>
 
         <section class="panel diagnostics-panel">
-          <div class="panel-header">
+          <div class="panel-head">
             <h2>Diagnostics</h2>
           </div>
           <pre id="diagnostics"></pre>
         </section>
       </main>
-    </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -113,10 +113,8 @@ const tabFinalizedBtn = document.getElementById('tab-finalized');
 const tabAnnotationsBtn = document.getElementById('tab-annotations');
 const tabComparisonBtn = document.getElementById('tab-comparison');
 const tabSourceBtn = document.getElementById('tab-source');
-const tabFileBtn = document.getElementById('tab-file');
 const tabOptionsBtn = document.getElementById('tab-options');
 const paneSourceEl = document.getElementById('pane-source');
-const paneFileEl = document.getElementById('pane-file');
 const paneOptionsEl = document.getElementById('pane-options');
 const sourceHighlightEl = document.getElementById('source-highlight');
 const sourceGutterEl = document.getElementById('source-gutter');
@@ -126,6 +124,8 @@ const fileSaveBtn = document.getElementById('file-save');
 const fileSaveAsBtn = document.getElementById('file-save-as');
 const importImageBase64Btn = document.getElementById('import-image-base64');
 const currentFilePathEl = document.getElementById('current-file-path');
+const menuToggleBtn = document.getElementById('menu-toggle');
+const menuPanelEl = document.getElementById('menu-panel');
 const filePickerEl = document.createElement('input');
 filePickerEl.type = 'file';
 filePickerEl.accept = '.aeon,text/plain';
@@ -155,13 +155,83 @@ function describeCanonicalText(text) {
   return `Canonical AEON is shown as exact text with soft-wrap disabled. Bytes: ${bytes}. Final newline: ${finalNewline}.`;
 }
 
+function highlightJson(source) {
+  return escapeHtml(source).replace(
+    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g,
+    (match, stringValue, keySuffix, literalValue) => {
+      if (stringValue) {
+        return keySuffix
+          ? `<span class="json-key">${stringValue}</span>${keySuffix}`
+          : `<span class="json-string">${stringValue}</span>`;
+      }
+      if (literalValue === 'null') {
+        return `<span class="json-null">${literalValue}</span>`;
+      }
+      if (literalValue) {
+        return `<span class="json-bool">${literalValue}</span>`;
+      }
+      if (/^-?\d/.test(match)) {
+        return `<span class="json-number">${match}</span>`;
+      }
+      return `<span class="json-punct">${match}</span>`;
+    },
+  );
+}
+
+function highlightComparison(source) {
+  return source
+    .split('\n')
+    .map((line) => {
+      if (/^\s*[{}\[\],]/.test(line) || /^\s*"[^"]*"\s*:/.test(line)) {
+        return highlightJson(line);
+      }
+      if (line === 'Sections' || line.startsWith('Mismatch:')) {
+        return `<span class="comparison-heading">${escapeHtml(line)}</span>`;
+      }
+      if (line.startsWith('--- ')) {
+        return `<span class="comparison-marker">${escapeHtml(line)}</span>`;
+      }
+      if (line.startsWith('match:')) {
+        return `<span class="comparison-ok">match</span>${escapeHtml(line.slice('match'.length))}`;
+      }
+      if (line.startsWith('mismatch:')) {
+        return `<span class="comparison-error">mismatch</span>${escapeHtml(line.slice('mismatch'.length))}`;
+      }
+      if (line.startsWith('status:')) {
+        const value = line.slice('status:'.length).trim();
+        const className = value === 'match' ? 'comparison-ok' : 'comparison-error';
+        return `<span class="comparison-label">status:</span> <span class="${className}">${escapeHtml(value)}</span>`;
+      }
+      const meta = /^([^:]+):\s*(.*)$/.exec(line);
+      if (meta) {
+        return `<span class="comparison-label">${escapeHtml(meta[1])}:</span> ${escapeHtml(meta[2])}`;
+      }
+      return escapeHtml(line);
+    })
+    .join('\n');
+}
+
+function renderOutputHtml(view) {
+  const value = outputState[view] || '';
+  if (view === 'canonical') {
+    return highlightAeon(value);
+  }
+  if (view === 'finalized' || view === 'annotations') {
+    return highlightJson(value);
+  }
+  if (view === 'comparison') {
+    return highlightComparison(value);
+  }
+  return escapeHtml(value);
+}
+
 function setOutputView(view) {
   outputState.view = view;
   tabCanonicalBtn.classList.toggle('is-active', view === 'canonical');
   tabFinalizedBtn.classList.toggle('is-active', view === 'finalized');
   tabAnnotationsBtn.classList.toggle('is-active', view === 'annotations');
   tabComparisonBtn.classList.toggle('is-active', view === 'comparison');
-  outputEl.textContent = outputState[view] || '';
+  outputEl.innerHTML = renderOutputHtml(view);
   if (view === 'canonical') {
     viewMetaEl.textContent = describeCanonicalText(outputState.canonical || '');
   } else if (view === 'finalized') {
@@ -175,15 +245,22 @@ function setOutputView(view) {
 
 function setInputView(view) {
   tabSourceBtn.classList.toggle('is-active', view === 'source');
-  tabFileBtn.classList.toggle('is-active', view === 'file');
   tabOptionsBtn.classList.toggle('is-active', view === 'options');
   paneSourceEl.classList.toggle('is-active', view === 'source');
-  paneFileEl.classList.toggle('is-active', view === 'file');
   paneOptionsEl.classList.toggle('is-active', view === 'options');
 }
 
 function refreshCurrentFilePath() {
   currentFilePathEl.textContent = currentFilePath ?? 'Unsaved playground buffer';
+}
+
+function setMenuOpen(open) {
+  menuPanelEl.hidden = !open;
+  menuToggleBtn.setAttribute('aria-expanded', String(open));
+}
+
+function closeMenu() {
+  setMenuOpen(false);
 }
 
 function sanitizeBindingName(value) {
@@ -995,8 +1072,25 @@ tabFinalizedBtn.addEventListener('click', () => setOutputView('finalized'));
 tabAnnotationsBtn.addEventListener('click', () => setOutputView('annotations'));
 tabComparisonBtn.addEventListener('click', () => setOutputView('comparison'));
 tabSourceBtn.addEventListener('click', () => setInputView('source'));
-tabFileBtn.addEventListener('click', () => setInputView('file'));
 tabOptionsBtn.addEventListener('click', () => setInputView('options'));
+menuToggleBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  setMenuOpen(menuPanelEl.hidden);
+});
+document.addEventListener('click', (event) => {
+  if (menuPanelEl.hidden) {
+    return;
+  }
+  const target = event.target;
+  if (target instanceof Node && !menuPanelEl.contains(target) && !menuToggleBtn.contains(target)) {
+    closeMenu();
+  }
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeMenu();
+  }
+});
 processTsBtn.addEventListener('click', () => {
   void run('typescript');
 });
@@ -1007,15 +1101,19 @@ processCompareBtn.addEventListener('click', () => {
   void runComparison();
 });
 fileOpenBtn.addEventListener('click', () => {
+  closeMenu();
   void openAeonFile();
 });
 fileSaveBtn.addEventListener('click', () => {
+  closeMenu();
   void saveAeonFile(false);
 });
 fileSaveAsBtn.addEventListener('click', () => {
+  closeMenu();
   void saveAeonFile(true);
 });
 importImageBase64Btn.addEventListener('click', () => {
+  closeMenu();
   void chooseImageImport();
 });
 
