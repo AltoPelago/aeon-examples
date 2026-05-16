@@ -4,6 +4,35 @@ import { compile, formatPath } from '@altopelago/aeon-core';
 import { finalizeJson } from '@altopelago/aeon-finalize';
 import { loadAeonWasm } from '@altopelago/aeon-wasm';
 
+let defaultWasmInputPromise;
+
+async function loadDefaultWasmInput() {
+  defaultWasmInputPromise ??= (async () => {
+    const { default: wasmUrl } = await import('../node_modules/@altopelago/aeon-wasm/pkg/aeon_wasm_bg.wasm?url');
+    const response = await fetch(wasmUrl);
+
+    if (!response.ok) {
+      throw new Error(`Failed to load AEON WASM artifact from ${wasmUrl}: HTTP ${response.status}`);
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+
+    if (
+      bytes.length < 4
+      || bytes[0] !== 0x00
+      || bytes[1] !== 0x61
+      || bytes[2] !== 0x73
+      || bytes[3] !== 0x6d
+    ) {
+      throw new Error(`Failed to load AEON WASM artifact from ${wasmUrl}: response was not a WebAssembly module`);
+    }
+
+    return bytes;
+  })();
+
+  return defaultWasmInputPromise;
+}
+
 function isHeaderSummaryEvent(event) {
   return typeof event.key === 'string' && event.key.startsWith('aeon:');
 }
@@ -241,6 +270,6 @@ export async function processWithTypeScriptCore(source, options, neon = null) {
 }
 
 export async function processWithRustWasm(source, options, neon = null, initInput = undefined) {
-  const runtime = await loadAeonWasm(initInput);
+  const runtime = await loadAeonWasm(initInput ?? await loadDefaultWasmInput());
   return normalizeEngineResult('rust-wasm', runtime.processAeon(source, options), neon);
 }
