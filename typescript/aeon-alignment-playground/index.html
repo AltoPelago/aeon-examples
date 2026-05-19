@@ -30,6 +30,7 @@
           <div class="panel-head">
             <div class="view-toggle" role="tablist" aria-label="Input view">
               <button id="tab-source" class="view-tab is-active" type="button">Source</button>
+              <button id="tab-schema" class="view-tab" type="button">Schema</button>
               <button id="tab-options" class="view-tab" type="button">Options</button>
             </div>
             <div class="action-row">
@@ -52,6 +53,20 @@
               <pre id="source-highlight" class="highlight-backdrop" aria-hidden="true"><code></code></pre>
               <textarea id="source" spellcheck="false" wrap="off"></textarea>
             </div>
+          </div>
+
+          <div id="pane-schema" class="input-pane">
+            <div class="source-toolbar">
+              <label class="inline-toggle" for="schema-enabled">
+                <input id="schema-enabled" type="checkbox" />
+                <span>Enable schema validation</span>
+              </label>
+              <div class="action-row">
+                <button id="schema-builder-open" type="button">Build Schema</button>
+                <button id="schema-sample" type="button">Load Sample</button>
+              </div>
+            </div>
+            <textarea id="schema-input" class="schema-editor" spellcheck="false" wrap="off"></textarea>
           </div>
 
           <div id="pane-options" class="input-pane">
@@ -129,6 +144,32 @@
           <pre id="diagnostics"></pre>
         </section>
       </main>
+
+      <div id="schema-builder-modal" class="modal-backdrop" hidden>
+        <section class="schema-builder" role="dialog" aria-modal="true" aria-labelledby="schema-builder-title">
+          <div class="modal-head">
+            <h2 id="schema-builder-title">Schema Builder</h2>
+            <button id="schema-builder-close" type="button" aria-label="Close schema builder">Close</button>
+          </div>
+          <div class="schema-builder-toolbar">
+            <label class="control-field">
+              <span>World</span>
+              <select id="schema-builder-world">
+                <option value="open">open</option>
+                <option value="closed">closed</option>
+              </select>
+            </label>
+            <button id="schema-add-peer" type="button">Add Peer Binding</button>
+            <button id="schema-add-child" type="button">Add Child Binding</button>
+            <button id="schema-add-child-many" type="button">Add Child *</button>
+            <button id="schema-seed-source" type="button">Seed From Source</button>
+          </div>
+          <div id="schema-rule-list" class="schema-rule-list"></div>
+          <div class="modal-foot">
+            <button id="schema-builder-apply" class="verify-btn" type="button">Apply Schema</button>
+          </div>
+        </section>
+      </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

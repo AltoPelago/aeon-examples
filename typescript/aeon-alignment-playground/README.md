@@ -15,6 +15,8 @@ It focuses on the shared processing path:
 - canonical output
 - finalized JSON output
 - annotation stream output
+- optional AEOS-shaped schema validation
+- schema builder overlay for peer, child, and wildcard child rules
 - normalized event summary comparison
 - diagnostics
 - fixture-driven parity tests
@@ -72,4 +74,7 @@ npm run test:playground
   local Rust WASM artifact.
 - Rust comparison uses `@altopelago/aeon-wasm`.
 - AEON open/save uses browser file and download APIs.
-- Schema-authoring mode can be layered on later without changing the engine comparison contract.
+- Schema validation is intentionally dependency-light in this playground and
+  supports the shared v1 rule shape used by AEOS: `world`, `rules`, `path`, and
+  common constraints such as `required`, `type`, `datatype`, string length and
+  pattern checks, numeric bounds, container kind, and exact child count.

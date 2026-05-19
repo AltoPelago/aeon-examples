@@ -137,6 +137,118 @@ test('typescript playground preserves structured headers with comment trivia bef
   );
 });
 
+test('typescript playground applies custom schema validation', async () => {
+  const result = await processWithTypeScriptCore(
+    'app:object = {\n  name:string = "ok"\n  port:number = 70000\n}\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', required: true } },
+          { path: '$.app.name', constraints: { type: 'StringLiteral', required: true, min_length: 1 } },
+          { path: '$.app.port', constraints: { type: 'NumberLiteral', required: true, max_value: '65535' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => error.code),
+    ['numeric_max_value'],
+  );
+});
+
+test('typescript playground rejects unexpected bindings in closed schema world', async () => {
+  const result = await processWithTypeScriptCore(
+    'app:object = {\n  name:string = "ok"\n  debug:boolean = true\n}\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'closed',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', required: true } },
+          { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => error.code),
+    ['unexpected_binding'],
+  );
+});
+
+test('typescript playground validates toggle pair constraints', async () => {
+  const result = await processWithTypeScriptCore(
+    'enabled:toggle = yes\nvisible:toggle = on\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.enabled', constraints: { type: 'ToggleLiteral', toggle_pair: 'yes_no' } },
+          { path: '$.visible', constraints: { type: 'ToggleLiteral', toggle_pair: 'yes_no' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => error.code),
+    ['toggle_pair_mismatch'],
+  );
+});
+
+test('typescript playground validates nullable, null value, numeric widening, and child cardinality constraints', async () => {
+  const passing = await processWithTypeScriptCore(
+    'app:o = {\n  name:null = !none\n  score:infinity = Infinity\n  sample:nan = NaN\n}\n',
+    {
+      ...buildOptions('loose'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', min_children: 3, max_children: 3 } },
+          { path: '$.app.name', constraints: { type: 'StringLiteral', nullable: true, null_value: 'none' } },
+          { path: '$.app.score', constraints: { type: 'NumberLiteral', allow_infinity: true } },
+          { path: '$.app.sample', constraints: { type: 'NumberLiteral', allow_nan: true } },
+        ],
+      }),
+    },
+  );
+  assert.equal(passing.ok, true);
+
+  const failing = await processWithTypeScriptCore(
+    'app:o = {\n  name:null = !notApplicable\n  score:infinity = Infinity\n}\n',
+    {
+      ...buildOptions('loose'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', max_children: 1 } },
+          { path: '$.app.name', constraints: { type: 'StringLiteral', nullable: true, null_value: 'none' } },
+          { path: '$.app.score', constraints: { type: 'NumberLiteral' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(failing.ok, false);
+  assert.deepEqual(
+    failing.errors.map((error) => error.code),
+    ['container_cardinality_mismatch', 'null_value_mismatch', 'type_mismatch'],
+  );
+});
+
 test('playground validation mode does not duplicate tokenized structured headers', async () => {
   const source = [
     'aeon',
