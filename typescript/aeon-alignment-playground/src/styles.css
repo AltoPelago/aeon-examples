@@ -682,15 +682,38 @@ pre {
   min-width: 0;
 }
 
+.schema-rule .control-field span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.schema-rule .control-field small {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .schema-rule .constraint-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
+.schema-rule .constraint-grid [hidden] {
+  display: none;
+}
+
 .schema-rule .constraint-grid input {
   min-width: 0;
   width: 100%;
+}
+
+.schema-rule [data-invalid="true"] {
+  border-color: var(--error);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--error) 72%, transparent);
 }
 
 .schema-rule-remove {

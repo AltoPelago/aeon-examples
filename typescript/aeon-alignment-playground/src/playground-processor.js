@@ -197,6 +197,12 @@ function schemaPathMatches(rulePath, eventPath) {
   return rulePath === eventPath || wildcardPattern(rulePath).test(eventPath);
 }
 
+function appendAttributePath(basePath, key) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
+    ? `${basePath}@${key}`
+    : `${basePath}@[${JSON.stringify(key)}]`;
+}
+
 function normalizeSchemaEvent(event) {
   const value = event.value;
   const unwrapped = value?.valueType === 'TypedValue' || value?.type === 'TypedValue'
@@ -214,6 +220,52 @@ function normalizeSchemaEvent(event) {
   };
 }
 
+function entriesFromAttributeMap(attributes) {
+  if (!attributes) {
+    return [];
+  }
+  if (attributes instanceof Map) {
+    return Array.from(attributes.entries());
+  }
+  if (typeof attributes === 'object' && !Array.isArray(attributes)) {
+    return Object.entries(attributes);
+  }
+  return [];
+}
+
+function normalizeAttributeEvent(basePath, key, entry) {
+  const value = entry?.value;
+  return {
+    path: appendAttributePath(basePath, key),
+    key,
+    datatype: typeof entry?.datatype === 'string' ? entry.datatype : entry?.datatype?.name ?? null,
+    valueType: valueTypeName(value),
+    value: value?.value,
+    raw: value?.raw,
+    span: value?.span ?? null,
+  };
+}
+
+function normalizeAttributeEvents(basePath, attributes) {
+  const events = [];
+  for (const [key, entry] of entriesFromAttributeMap(attributes)) {
+    const event = normalizeAttributeEvent(basePath, key, entry);
+    events.push(event);
+    events.push(...normalizeAttributeEvents(event.path, entry?.annotations ?? entry?.attributes));
+  }
+  return events;
+}
+
+function normalizeSchemaEvents(rawEvents) {
+  const events = [];
+  for (const rawEvent of rawEvents) {
+    const event = normalizeSchemaEvent(rawEvent);
+    events.push(event);
+    events.push(...normalizeAttributeEvents(event.path, rawEvent.annotations));
+  }
+  return events;
+}
+
 function numericRaw(event) {
   return event.raw !== undefined || event.value !== undefined
     ? String(event.raw ?? event.value)
@@ -227,6 +279,7 @@ function toggleRaw(event) {
 }
 
 function schemaTypeMatches(event, constraints) {
+  const numericWideningTypes = ['NumberLiteral', 'IntegerLiteral', 'FloatLiteral', 'HexLiteral', 'RadixLiteral'];
   if (typeof constraints.type !== 'string') {
     return true;
   }
@@ -236,10 +289,10 @@ function schemaTypeMatches(event, constraints) {
   if (constraints.nullable === true && event.valueType === 'NullLiteral') {
     return true;
   }
-  if (constraints.allow_infinity === true && event.valueType === 'InfinityLiteral' && ['NumberLiteral', 'IntegerLiteral', 'FloatLiteral'].includes(constraints.type)) {
+  if (constraints.allow_infinity === true && event.valueType === 'InfinityLiteral' && numericWideningTypes.includes(constraints.type)) {
     return true;
   }
-  if (constraints.allow_nan === true && event.valueType === 'NaNLiteral' && ['NumberLiteral', 'IntegerLiteral', 'FloatLiteral'].includes(constraints.type)) {
+  if (constraints.allow_nan === true && event.valueType === 'NaNLiteral' && numericWideningTypes.includes(constraints.type)) {
     return true;
   }
   return false;
@@ -256,8 +309,7 @@ function validateSchemaEvents(rawEvents, schema) {
     return { ok: true, errors: [], warnings: [] };
   }
 
-  const events = rawEvents
-    .map(normalizeSchemaEvent)
+  const events = normalizeSchemaEvents(rawEvents)
     .filter((event) => !event.path.startsWith('$.[\"aeon:'));
   const errors = [];
 

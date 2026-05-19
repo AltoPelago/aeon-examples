@@ -131,6 +131,7 @@ const schemaBuilderWorldEl = document.getElementById('schema-builder-world');
 const schemaAddPeerBtn = document.getElementById('schema-add-peer');
 const schemaAddChildBtn = document.getElementById('schema-add-child');
 const schemaAddChildManyBtn = document.getElementById('schema-add-child-many');
+const schemaAddAttributeBtn = document.getElementById('schema-add-attribute');
 const schemaSeedSourceBtn = document.getElementById('schema-seed-source');
 const schemaRuleListEl = document.getElementById('schema-rule-list');
 const outputEl = document.getElementById('output');
@@ -1025,8 +1026,7 @@ function parseSchemaTextOrDefault() {
   };
 }
 
-function schemaTypeOptions(selected) {
-  return [
+const SCHEMA_TYPE_OPTIONS = [
     'StringLiteral',
     'NumberLiteral',
     'IntegerLiteral',
@@ -1037,9 +1037,6 @@ function schemaTypeOptions(selected) {
     'ListNode',
     'TupleNode',
     'NodeLiteral',
-    'NullLiteral',
-    'InfinityLiteral',
-    'NaNLiteral',
     'HexLiteral',
     'EncodingLiteral',
     'RadixLiteral',
@@ -1047,7 +1044,18 @@ function schemaTypeOptions(selected) {
     'DateLiteral',
     'TimeLiteral',
     'DateTimeLiteral',
-  ].map((type) => `<option value="${type}"${type === selected ? ' selected' : ''}>${type}</option>`).join('');
+];
+
+function schemaTypeOptions(selected, restrictToContainers = false) {
+  const options = restrictToContainers
+    ? SCHEMA_TYPE_OPTIONS.filter((type) => CHILD_CAPABLE_SCHEMA_TYPES.has(type))
+    : SCHEMA_TYPE_OPTIONS;
+  const selectedIsAvailable = !selected || options.includes(selected);
+  const invalidSelectedOption = selected && !selectedIsAvailable
+    ? `<option value="${selected}" selected disabled>${selected} (invalid with children)</option>`
+    : '';
+
+  return `${invalidSelectedOption}${options.map((type) => `<option value="${type}"${type === selected ? ' selected' : ''}>${type}</option>`).join('')}`;
 }
 
 const CHILD_CAPABLE_SCHEMA_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode', 'NodeLiteral']);
@@ -1068,7 +1076,7 @@ const NUMERIC_CONSTRAINT_TYPES = new Set([
   'FloatLiteral',
   'RadixLiteral',
 ]);
-const NUMERIC_WIDENING_TYPES = new Set(['NumberLiteral', 'IntegerLiteral', 'FloatLiteral']);
+const NUMERIC_WIDENING_TYPES = new Set(['NumberLiteral', 'IntegerLiteral', 'FloatLiteral', 'HexLiteral', 'RadixLiteral']);
 const CONTAINER_CONSTRAINT_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode', 'NodeLiteral']);
 const BUILTIN_SCHEMA_TYPES_BY_DATATYPE = new Map([
   ['string', 'StringLiteral'],
@@ -1092,10 +1100,17 @@ const BUILTIN_SCHEMA_TYPES_BY_DATATYPE = new Map([
   ['node', 'NodeLiteral'],
 ]);
 
-function schemaRuleHtml(rule, index, selectedPath) {
+function schemaRuleHtml(rule, index, selectedPath, hasChildRules = false) {
   const constraints = rule.constraints ?? {};
   const type = constraints.type ?? '';
   const path = rule.path ?? '$.field';
+  const nullValue = typeof constraints.null_value === 'string' ? constraints.null_value : '';
+  const nullValuePreset = nullValue === ''
+    ? ''
+    : ['none', 'notApplicable'].includes(nullValue)
+      ? nullValue
+      : 'custom';
+  const customNullValue = nullValuePreset === 'custom' ? nullValue : '';
   return `
     <div class="schema-rule" data-index="${index}">
       <input name="schema-selected-rule" type="radio" ${path === selectedPath ? 'checked' : ''} />
@@ -1104,8 +1119,8 @@ function schemaRuleHtml(rule, index, selectedPath) {
         <input data-field="path" type="text" value="${escapeHtml(path)}" />
       </label>
       <label class="control-field">
-        <span>Type</span>
-        <select data-field="type"><option value="">any</option>${schemaTypeOptions(type)}</select>
+        <span>Type${hasChildRules ? '<small>Has child rules</small>' : ''}</span>
+        <select data-field="type">${hasChildRules ? '' : '<option value="">any</option>'}${schemaTypeOptions(type, hasChildRules)}</select>
       </label>
       <label class="control-field">
         <span>Custom datatype</span>
@@ -1116,11 +1131,6 @@ function schemaRuleHtml(rule, index, selectedPath) {
         <span>Required</span>
       </label>
       <div class="constraint-grid">
-        <label class="inline-toggle" data-constraint-kind="nullable">
-          <input data-field="nullable" type="checkbox" ${constraints.nullable === true ? 'checked' : ''} />
-          <span>Allow null</span>
-        </label>
-        <input data-field="null_value" data-constraint-kind="null" type="text" placeholder="null value" value="${escapeHtml(constraints.null_value ?? '')}" />
         <input data-field="min_length" data-constraint-kind="string" type="number" min="0" placeholder="min length" value="${constraints.min_length ?? ''}" />
         <input data-field="max_length" data-constraint-kind="string" type="number" min="0" placeholder="max length" value="${constraints.max_length ?? ''}" />
         <input data-field="pattern" data-constraint-kind="string" type="text" placeholder="pattern" value="${escapeHtml(constraints.pattern ?? '')}" />
@@ -1134,6 +1144,22 @@ function schemaRuleHtml(rule, index, selectedPath) {
         </select>
         <input data-field="min_value" data-constraint-kind="numeric" type="text" placeholder="min value" value="${escapeHtml(constraints.min_value ?? '')}" />
         <input data-field="max_value" data-constraint-kind="numeric" type="text" placeholder="max value" value="${escapeHtml(constraints.max_value ?? '')}" />
+        <select data-field="toggle_pair" data-constraint-kind="toggle">
+          <option value="">any toggle</option>
+          <option value="yes_no"${constraints.toggle_pair === 'yes_no' ? ' selected' : ''}>yes / no</option>
+          <option value="on_off"${constraints.toggle_pair === 'on_off' ? ' selected' : ''}>on / off</option>
+        </select>
+        <label class="inline-toggle" data-constraint-kind="nullable">
+          <input data-field="nullable" type="checkbox" ${constraints.nullable === true ? 'checked' : ''} />
+          <span>Allow null</span>
+        </label>
+        <select data-field="null_value_preset" data-constraint-kind="null">
+          <option value="">any null</option>
+          <option value="none"${nullValuePreset === 'none' ? ' selected' : ''}>!none</option>
+          <option value="notApplicable"${nullValuePreset === 'notApplicable' ? ' selected' : ''}>!notApplicable</option>
+          <option value="custom"${nullValuePreset === 'custom' ? ' selected' : ''}>custom null</option>
+        </select>
+        <input data-field="null_value_custom" data-constraint-kind="null" type="text" placeholder="custom null value" value="${escapeHtml(customNullValue)}" />
         <label class="inline-toggle" data-constraint-kind="numeric-widening">
           <input data-field="allow_infinity" type="checkbox" ${constraints.allow_infinity === true ? 'checked' : ''} />
           <span>Allow infinity</span>
@@ -1142,16 +1168,6 @@ function schemaRuleHtml(rule, index, selectedPath) {
           <input data-field="allow_nan" type="checkbox" ${constraints.allow_nan === true ? 'checked' : ''} />
           <span>Allow NaN</span>
         </label>
-        <select data-field="type_is" data-constraint-kind="container-kind">
-          <option value="">container kind</option>
-          <option value="list"${constraints.type_is === 'list' ? ' selected' : ''}>list</option>
-          <option value="tuple"${constraints.type_is === 'tuple' ? ' selected' : ''}>tuple</option>
-        </select>
-        <select data-field="toggle_pair" data-constraint-kind="toggle">
-          <option value="">any toggle</option>
-          <option value="yes_no"${constraints.toggle_pair === 'yes_no' ? ' selected' : ''}>yes / no</option>
-          <option value="on_off"${constraints.toggle_pair === 'on_off' ? ' selected' : ''}>on / off</option>
-        </select>
       </div>
       <button class="schema-rule-remove" type="button" aria-label="Remove rule">×</button>
     </div>
@@ -1160,7 +1176,7 @@ function schemaRuleHtml(rule, index, selectedPath) {
 
 function schemaConstraintKindsForType(type) {
   if (!type) {
-    return new Set(['nullable', 'null', 'string', 'numeric', 'numeric-widening', 'container', 'container-kind', 'toggle']);
+    return new Set(['nullable', 'null', 'string', 'numeric', 'numeric-widening', 'container', 'toggle']);
   }
   const kinds = new Set(['nullable']);
   if (type === 'NullLiteral') {
@@ -1177,9 +1193,6 @@ function schemaConstraintKindsForType(type) {
   }
   if (CONTAINER_CONSTRAINT_TYPES.has(type)) {
     kinds.add('container');
-  }
-  if (type === 'ListNode' || type === 'TupleNode') {
-    kinds.add('container-kind');
   }
   if (type === 'ToggleLiteral') {
     kinds.add('toggle');
@@ -1205,6 +1218,92 @@ function updateSchemaConstraintState(row) {
     }
     control.hidden = !active;
   }
+  updateNullValueCustomState(row);
+  validateSchemaRuleRow(row);
+}
+
+function updateNullValueCustomState(row) {
+  const preset = row.querySelector('[data-field="null_value_preset"]');
+  const custom = row.querySelector('[data-field="null_value_custom"]');
+  if (!(preset instanceof HTMLSelectElement) || !(custom instanceof HTMLInputElement)) {
+    return;
+  }
+  const active = !preset.disabled && preset.value === 'custom';
+  custom.disabled = !active;
+  custom.hidden = !active;
+}
+
+function clearSchemaRuleValidation(row) {
+  for (const control of row.querySelectorAll('[data-field]')) {
+    control.removeAttribute('aria-invalid');
+    control.removeAttribute('data-invalid');
+    control.removeAttribute('title');
+  }
+}
+
+function markSchemaRuleInvalid(row, fields, message) {
+  for (const field of fields) {
+    const control = row.querySelector(`[data-field="${field}"]`);
+    if (!control || control.disabled || control.hidden) {
+      continue;
+    }
+    control.setAttribute('aria-invalid', 'true');
+    control.setAttribute('data-invalid', 'true');
+    control.setAttribute('title', message);
+  }
+}
+
+function readSchemaNumber(row, field) {
+  const control = row.querySelector(`[data-field="${field}"]`);
+  if (!control || control.disabled || control.hidden || control.value.trim() === '') {
+    return null;
+  }
+  const value = Number(control.value);
+  return Number.isFinite(value) ? value : null;
+}
+
+function validateSchemaRuleRow(row) {
+  if (!(row instanceof HTMLElement)) {
+    return;
+  }
+  clearSchemaRuleValidation(row);
+
+  const minLength = readSchemaNumber(row, 'min_length');
+  const maxLength = readSchemaNumber(row, 'max_length');
+  if (minLength !== null && maxLength !== null && maxLength < minLength) {
+    markSchemaRuleInvalid(row, ['min_length', 'max_length'], 'Max length must be greater than or equal to min length.');
+  }
+
+  const minChildren = readSchemaNumber(row, 'min_children');
+  const maxChildren = readSchemaNumber(row, 'max_children');
+  const exactChildren = readSchemaNumber(row, 'length_exact');
+  if (minChildren !== null && maxChildren !== null && maxChildren < minChildren) {
+    markSchemaRuleInvalid(row, ['min_children', 'max_children'], 'Max children must be greater than or equal to min children.');
+  }
+  if (exactChildren !== null && minChildren !== null && exactChildren < minChildren) {
+    markSchemaRuleInvalid(row, ['length_exact', 'min_children'], 'Exact children must be greater than or equal to min children.');
+  }
+  if (exactChildren !== null && maxChildren !== null && exactChildren > maxChildren) {
+    markSchemaRuleInvalid(row, ['length_exact', 'max_children'], 'Exact children must be less than or equal to max children.');
+  }
+
+  const minValue = readSchemaNumber(row, 'min_value');
+  const maxValue = readSchemaNumber(row, 'max_value');
+  if (minValue !== null && maxValue !== null && maxValue < minValue) {
+    markSchemaRuleInvalid(row, ['min_value', 'max_value'], 'Max value must be greater than or equal to min value.');
+  }
+
+  const nullPreset = row.querySelector('[data-field="null_value_preset"]');
+  const customNull = row.querySelector('[data-field="null_value_custom"]');
+  if (
+    nullPreset instanceof HTMLSelectElement
+    && customNull instanceof HTMLInputElement
+    && !nullPreset.disabled
+    && nullPreset.value === 'custom'
+    && customNull.value.trim() === ''
+  ) {
+    markSchemaRuleInvalid(row, ['null_value_custom'], 'Custom null value is required.');
+  }
 }
 
 function updateAllSchemaConstraintStates() {
@@ -1214,7 +1313,7 @@ function updateAllSchemaConstraintStates() {
 }
 
 function isSchemaChildPath(parent, child) {
-  return child.startsWith(`${parent}.`) || child.startsWith(`${parent}[`);
+  return child.startsWith(`${parent}.`) || child.startsWith(`${parent}[`) || child.startsWith(`${parent}@`);
 }
 
 function compareSchemaRulePaths(a, b) {
@@ -1239,6 +1338,11 @@ function sortSchemaRules(schema) {
   };
 }
 
+function schemaRuleHasDescendants(rule, rules) {
+  const path = rule.path ?? '';
+  return path.length > 0 && rules.some((candidate) => candidate !== rule && isSchemaChildPath(path, candidate.path ?? ''));
+}
+
 function selectSchemaRuleRow(row) {
   const radio = row?.querySelector('input[name="schema-selected-rule"]');
   if (radio instanceof HTMLInputElement) {
@@ -1259,7 +1363,9 @@ function renderSchemaBuilder(schema, selectedPath = null) {
   const sortedSchema = sortSchemaRules(schema);
   schemaBuilderWorldEl.value = schema.world === 'closed' ? 'closed' : 'open';
   const activePath = selectedPath ?? sortedSchema.rules[0]?.path ?? null;
-  schemaRuleListEl.innerHTML = sortedSchema.rules.map((rule, index) => schemaRuleHtml(rule, index, activePath)).join('');
+  schemaRuleListEl.innerHTML = sortedSchema.rules
+    .map((rule, index) => schemaRuleHtml(rule, index, activePath, schemaRuleHasDescendants(rule, sortedSchema.rules)))
+    .join('');
   updateAllSchemaConstraintStates();
   updateSchemaChildActionState();
   scrollSchemaRuleIntoView(schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked')?.closest('.schema-rule'));
@@ -1276,10 +1382,10 @@ function collectSchemaFromBuilder() {
     const allowInfinity = read('allow_infinity')?.checked;
     const allowNan = read('allow_nan')?.checked;
     const sign = read('sign')?.value;
-    const typeIs = read('type_is')?.value;
     const togglePair = read('toggle_pair')?.value;
     const pattern = read('pattern')?.value.trim();
-    const nullValue = read('null_value')?.value.trim();
+    const nullValuePreset = read('null_value_preset')?.value;
+    const customNullValue = read('null_value_custom')?.value.trim();
     const minValue = read('min_value')?.value.trim();
     const maxValue = read('max_value')?.value.trim();
 
@@ -1290,9 +1396,14 @@ function collectSchemaFromBuilder() {
     if (allowInfinity && !read('allow_infinity')?.disabled) constraints.allow_infinity = true;
     if (allowNan && !read('allow_nan')?.disabled) constraints.allow_nan = true;
     if (sign && !read('sign')?.disabled) constraints.sign = sign;
-    if (typeIs && !read('type_is')?.disabled) constraints.type_is = typeIs;
     if (togglePair && !read('toggle_pair')?.disabled) constraints.toggle_pair = togglePair;
-    if (nullValue && !read('null_value')?.disabled) constraints.null_value = nullValue;
+    if (!read('null_value_preset')?.disabled) {
+      if (nullValuePreset === 'custom' && customNullValue) {
+        constraints.null_value = customNullValue;
+      } else if (nullValuePreset && nullValuePreset !== 'custom') {
+        constraints.null_value = nullValuePreset;
+      }
+    }
     if (pattern && !read('pattern')?.disabled) constraints.pattern = pattern;
     if (minValue && !read('min_value')?.disabled) constraints.min_value = minValue;
     if (maxValue && !read('max_value')?.disabled) constraints.max_value = maxValue;
@@ -1329,11 +1440,8 @@ function selectedSchemaRuleAllowsChildren() {
   }
 
   const type = selected.querySelector('[data-field="type"]')?.value;
-  const typeIs = selected.querySelector('[data-field="type_is"]')?.value;
   const datatype = selected.querySelector('[data-field="datatype"]')?.value.trim().toLowerCase();
   return CHILD_CAPABLE_SCHEMA_TYPES.has(type)
-    || typeIs === 'list'
-    || typeIs === 'tuple'
     || CHILD_CAPABLE_DATATYPES.has(datatype);
 }
 
@@ -1343,18 +1451,24 @@ function updateSchemaChildActionState() {
     button.disabled = !allowsChildren;
     button.title = allowsChildren ? '' : CHILD_ACTION_HINT;
   }
+  schemaAddAttributeBtn.disabled = !schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked');
 }
 
 function parentPath(path) {
+  const attribute = path.lastIndexOf('@');
   const bracket = path.lastIndexOf('[');
   const dot = path.lastIndexOf('.');
-  const cut = Math.max(bracket, dot);
+  const cut = Math.max(attribute, bracket, dot);
   return cut > 0 ? path.slice(0, cut) : '$';
 }
 
 function childPath(base, key, many = false) {
   const prefix = many ? `${base}[*]` : base;
   return `${prefix}.${key}`;
+}
+
+function attributePath(base, key) {
+  return `${base}@${key}`;
 }
 
 function addSchemaRule(kind) {
@@ -1367,7 +1481,9 @@ function addSchemaRule(kind) {
   const selected = selectedSchemaRulePath();
   const base = kind === 'peer' ? parentPath(selected) : selected;
   const index = schema.rules.length + 1;
-  const path = childPath(base, kind === 'peer' ? `peer${index}` : `child${index}`, kind === 'child-many');
+  const path = kind === 'attribute'
+    ? attributePath(base, `attr${index}`)
+    : childPath(base, kind === 'peer' ? `peer${index}` : `child${index}`, kind === 'child-many');
   schema.rules.push({
     path,
     constraints: { type: 'StringLiteral', required: true },
@@ -1571,6 +1687,7 @@ schemaBuilderApplyBtn.addEventListener('click', () => {
 schemaAddPeerBtn.addEventListener('click', () => addSchemaRule('peer'));
 schemaAddChildBtn.addEventListener('click', () => addSchemaRule('child'));
 schemaAddChildManyBtn.addEventListener('click', () => addSchemaRule('child-many'));
+schemaAddAttributeBtn.addEventListener('click', () => addSchemaRule('attribute'));
 schemaSeedSourceBtn.addEventListener('click', seedSchemaFromSource);
 schemaRuleListEl.addEventListener('focusin', (event) => {
   if (!(event.target instanceof HTMLElement)) {
@@ -1607,6 +1724,11 @@ schemaRuleListEl.addEventListener('change', (event) => {
     updateSchemaConstraintState(event.target.closest('.schema-rule'));
   }
   updateSchemaChildActionState();
+});
+schemaRuleListEl.addEventListener('input', (event) => {
+  if (event.target instanceof HTMLElement) {
+    validateSchemaRuleRow(event.target.closest('.schema-rule'));
+  }
 });
 schemaBuilderModalEl.addEventListener('click', (event) => {
   if (event.target === schemaBuilderModalEl) {

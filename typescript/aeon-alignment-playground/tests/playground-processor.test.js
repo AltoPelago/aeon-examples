@@ -249,6 +249,45 @@ test('typescript playground validates nullable, null value, numeric widening, an
   );
 });
 
+test('typescript playground validates schema rules against attribute paths', async () => {
+  const passing = await processWithTypeScriptCore(
+    'width@{x:string = "cm"}:list = [@{unit:string = "cm"} = 3]\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.width@x', constraints: { type: 'StringLiteral', required: true } },
+          { path: '$.width[*]@unit', constraints: { type: 'StringLiteral', required: true } },
+        ],
+      }),
+    },
+  );
+  assert.equal(passing.ok, true);
+
+  const failing = await processWithTypeScriptCore(
+    'width@{x:string = "cm"}:list = [@{unit:string = "cm"} = 3]\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.width@missing', constraints: { type: 'StringLiteral', required: true } },
+          { path: '$.width[*]@unit', constraints: { type: 'NumberLiteral', required: true } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(failing.ok, false);
+  assert.deepEqual(
+    failing.errors.map((error) => error.code),
+    ['missing_required_field', 'type_mismatch'],
+  );
+});
+
 test('playground validation mode does not duplicate tokenized structured headers', async () => {
   const source = [
     'aeon',
