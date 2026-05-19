@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import fixtures from '../fixtures/playground-parity.json' with { type: 'json' };
 import { processWithRustWasm, processWithTypeScriptCore } from '../src/playground-processor.js';
+import { seedSchemaFromAeonSource } from '../src/schema-seed.js';
 
 const LOCAL_WASM_ARTIFACT = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -285,6 +286,39 @@ test('typescript playground validates schema rules against attribute paths', asy
   assert.deepEqual(
     failing.errors.map((error) => error.code),
     ['missing_required_field', 'type_mismatch'],
+  );
+});
+
+test('schema builder seed preserves nested source paths', () => {
+  const rules = seedSchemaFromAeonSource(
+    [
+      'app:object = {',
+      '  name:string = "ok"',
+      '  nested:object = {',
+      '    enabled:boolean = true',
+      '  }',
+      '  tags:list = ["browser", "wasm"]',
+      '}',
+    ].join('\n'),
+    {
+      validationMode: 'strict',
+      maxSeparatorDepth: 8,
+      maxAttributeDepth: 1,
+      maxGenericDepth: 1,
+    },
+  );
+
+  assert.deepEqual(
+    rules.map((rule) => [rule.path, rule.constraints.type]),
+    [
+      ['$.app', 'ObjectNode'],
+      ['$.app.name', 'StringLiteral'],
+      ['$.app.nested', 'ObjectNode'],
+      ['$.app.nested.enabled', 'BooleanLiteral'],
+      ['$.app.tags', 'ListNode'],
+      ['$.app.tags[0]', 'StringLiteral'],
+      ['$.app.tags[1]', 'StringLiteral'],
+    ],
   );
 });
 

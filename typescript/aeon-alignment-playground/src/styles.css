@@ -452,9 +452,26 @@ pre {
 .highlight-editor textarea {
   background: transparent;
   color: transparent;
+  -webkit-text-fill-color: transparent;
   caret-color: var(--text);
   z-index: 2;
   resize: none;
+}
+
+.highlight-editor textarea:disabled {
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  opacity: 1;
+}
+
+.schema-highlight-editor:has(textarea:disabled) .highlight-backdrop,
+.schema-highlight-editor:has(textarea:disabled) .line-gutter {
+  opacity: 0.48;
+}
+
+.schema-highlight-editor:has(textarea:disabled) textarea {
+  cursor: not-allowed;
 }
 
 .highlight-editor textarea::selection {

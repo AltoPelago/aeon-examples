@@ -1,4 +1,5 @@
 import { processWithRustWasm, processWithTypeScriptCore } from './playground-processor.js';
+import { BUILTIN_SCHEMA_TYPES_BY_DATATYPE, seedSchemaFromAeonSource } from './schema-seed.js';
 
 const SAMPLE = `//# AEON alignment playground sample
 aeon:header = {
@@ -152,6 +153,8 @@ const paneSchemaEl = document.getElementById('pane-schema');
 const paneOptionsEl = document.getElementById('pane-options');
 const sourceHighlightEl = document.getElementById('source-highlight');
 const sourceGutterEl = document.getElementById('source-gutter');
+const schemaHighlightEl = document.getElementById('schema-highlight');
+const schemaGutterEl = document.getElementById('schema-gutter');
 const sourceTabInsertsTabEl = document.getElementById('source-tab-inserts-tab');
 const fileOpenBtn = document.getElementById('file-open');
 const fileSaveBtn = document.getElementById('file-save');
@@ -210,26 +213,31 @@ function describeCanonicalText(text) {
 }
 
 function highlightJson(source) {
-  return escapeHtml(source).replace(
-    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g,
-    (match, stringValue, keySuffix, literalValue) => {
-      if (stringValue) {
-        return keySuffix
-          ? `<span class="json-key">${stringValue}</span>${keySuffix}`
-          : `<span class="json-string">${stringValue}</span>`;
-      }
-      if (literalValue === 'null') {
-        return `<span class="json-null">${literalValue}</span>`;
-      }
-      if (literalValue) {
-        return `<span class="json-bool">${literalValue}</span>`;
-      }
-      if (/^-?\d/.test(match)) {
-        return `<span class="json-number">${match}</span>`;
-      }
-      return `<span class="json-punct">${match}</span>`;
-    },
-  );
+  const tokenRe = /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g;
+  let html = '';
+  let cursor = 0;
+
+  for (const match of source.matchAll(tokenRe)) {
+    html += escapeHtml(source.slice(cursor, match.index));
+    const [token, stringValue, keySuffix, literalValue] = match;
+
+    if (stringValue) {
+      html += keySuffix
+        ? `<span class="json-key">${escapeHtml(stringValue)}</span>${escapeHtml(keySuffix)}`
+        : `<span class="json-string">${escapeHtml(stringValue)}</span>`;
+    } else if (literalValue === 'null') {
+      html += `<span class="json-null">${escapeHtml(literalValue)}</span>`;
+    } else if (literalValue) {
+      html += `<span class="json-bool">${escapeHtml(literalValue)}</span>`;
+    } else if (/^-?\d/.test(token)) {
+      html += `<span class="json-number">${escapeHtml(token)}</span>`;
+    } else {
+      html += `<span class="json-punct">${escapeHtml(token)}</span>`;
+    }
+    cursor = match.index + token.length;
+  }
+
+  return html + escapeHtml(source.slice(cursor));
 }
 
 function highlightComparison(source) {
@@ -698,6 +706,12 @@ function syncSourceHighlight() {
   sourceGutterEl.textContent = renderLineNumbers(sourceEl.value);
 }
 
+function syncSchemaHighlight() {
+  const code = schemaHighlightEl.querySelector('code');
+  code.innerHTML = `${highlightJson(schemaInputEl.value)}\n`;
+  schemaGutterEl.textContent = renderLineNumbers(schemaInputEl.value);
+}
+
 function insertSourceText(text) {
   const start = sourceEl.selectionStart ?? 0;
   const end = sourceEl.selectionEnd ?? start;
@@ -1011,6 +1025,7 @@ function applySettings(settings) {
   schemaEnabledEl.checked = Boolean(settings.schemaEnabled);
   schemaInputEl.value = settings.schemaText ?? JSON.stringify(SAMPLE_SCHEMA, null, 2);
   schemaInputEl.disabled = !schemaEnabledEl.checked;
+  syncSchemaHighlight();
   includePathsEl.disabled = settings.materializationMode !== 'projected';
 }
 
@@ -1078,28 +1093,6 @@ const NUMERIC_CONSTRAINT_TYPES = new Set([
 ]);
 const NUMERIC_WIDENING_TYPES = new Set(['NumberLiteral', 'IntegerLiteral', 'FloatLiteral', 'HexLiteral', 'RadixLiteral']);
 const CONTAINER_CONSTRAINT_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode', 'NodeLiteral']);
-const BUILTIN_SCHEMA_TYPES_BY_DATATYPE = new Map([
-  ['string', 'StringLiteral'],
-  ['str', 'StringLiteral'],
-  ['s', 'StringLiteral'],
-  ['number', 'NumberLiteral'],
-  ['num', 'NumberLiteral'],
-  ['n', 'NumberLiteral'],
-  ['integer', 'IntegerLiteral'],
-  ['int', 'IntegerLiteral'],
-  ['float', 'FloatLiteral'],
-  ['boolean', 'BooleanLiteral'],
-  ['bool', 'BooleanLiteral'],
-  ['b', 'BooleanLiteral'],
-  ['toggle', 'ToggleLiteral'],
-  ['object', 'ObjectNode'],
-  ['obj', 'ObjectNode'],
-  ['o', 'ObjectNode'],
-  ['list', 'ListNode'],
-  ['tuple', 'TupleNode'],
-  ['node', 'NodeLiteral'],
-]);
-
 function schemaRuleHtml(rule, index, selectedPath, hasChildRules = false) {
   const constraints = rule.constraints ?? {};
   const type = constraints.type ?? '';
@@ -1496,22 +1489,12 @@ function seedSchemaFromSource() {
     world: schemaBuilderWorldEl.value === 'closed' ? 'closed' : 'open',
     rules: [],
   };
-  const bindingRe = /^\s*([A-Za-z_][A-Za-z0-9_]*)(?::([A-Za-z_][A-Za-z0-9_]*))?\s*=/gm;
-  for (const match of sourceEl.value.matchAll(bindingRe)) {
-    if (match[1] === 'aeon') continue;
-    const datatype = match[2] ?? '';
-    const normalizedDatatype = datatype.toLowerCase();
-    const builtinType = BUILTIN_SCHEMA_TYPES_BY_DATATYPE.get(normalizedDatatype);
-    const type = builtinType ?? 'StringLiteral';
-    schema.rules.push({
-      path: `$.${match[1]}`,
-      constraints: {
-        type,
-        ...(datatype && !builtinType ? { datatype } : {}),
-        required: true,
-      },
-    });
-  }
+  schema.rules = seedSchemaFromAeonSource(sourceEl.value, {
+    validationMode: validationModeEl.value,
+    maxSeparatorDepth: readPositiveInt(separatorDepthEl, 8),
+    maxAttributeDepth: readPositiveInt(attributeDepthEl, 1),
+    maxGenericDepth: readPositiveInt(genericDepthEl, 1),
+  });
   if (schema.rules.length === 0) {
     schema.rules = structuredClone(SAMPLE_SCHEMA.rules);
   }
@@ -1652,8 +1635,14 @@ schemaEnabledEl.addEventListener('change', () => {
   setStatus(diagStatusEl, 'stale', 'warn');
 });
 schemaInputEl.addEventListener('input', () => {
+  syncSchemaHighlight();
   setStatus(runStatusEl, 'stale', 'warn');
   setStatus(diagStatusEl, 'stale', 'warn');
+});
+schemaInputEl.addEventListener('scroll', () => {
+  schemaHighlightEl.scrollTop = schemaInputEl.scrollTop;
+  schemaHighlightEl.scrollLeft = schemaInputEl.scrollLeft;
+  schemaGutterEl.scrollTop = schemaInputEl.scrollTop;
 });
 finalizeScopeEl.addEventListener('change', () => {
   setStatus(runStatusEl, 'stale', 'warn');
@@ -1671,6 +1660,7 @@ schemaSampleBtn.addEventListener('click', () => {
   schemaEnabledEl.checked = true;
   schemaInputEl.disabled = false;
   schemaInputEl.value = JSON.stringify(SAMPLE_SCHEMA, null, 2);
+  syncSchemaHighlight();
   setStatus(runStatusEl, 'schema sample', 'ok');
   setStatus(diagStatusEl, 'stale', 'warn');
 });
@@ -1680,6 +1670,7 @@ schemaBuilderApplyBtn.addEventListener('click', () => {
   schemaInputEl.value = JSON.stringify(collectSchemaFromBuilder(), null, 2);
   schemaEnabledEl.checked = true;
   schemaInputEl.disabled = false;
+  syncSchemaHighlight();
   closeSchemaBuilder();
   setStatus(runStatusEl, 'schema updated', 'ok');
   setStatus(diagStatusEl, 'stale', 'warn');
@@ -1786,6 +1777,7 @@ setInputView('source');
 setOutputView('canonical');
 refreshCurrentFilePath();
 syncSourceHighlight();
+syncSchemaHighlight();
 setStatus(runStatusEl, 'sample loaded', 'ok');
 setStatus(diagStatusEl, 'waiting', 'warn');
 
