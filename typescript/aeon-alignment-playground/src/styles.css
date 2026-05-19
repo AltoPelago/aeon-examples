@@ -573,6 +573,7 @@ pre {
 
 .tok-directive { color: var(--aeon-directive); }
 .tok-key { color: var(--aeon-key); }
+.tok-quoted-key { color: #4f9cff; }
 .tok-type { color: var(--aeon-type); }
 .tok-attribute { color: var(--aeon-attribute); }
 .tok-attribute-punct { color: var(--aeon-attribute-punct); }
@@ -684,11 +685,11 @@ pre {
   gap: 8px;
   align-items: start;
   padding: 8px;
-  border-bottom: 1px solid var(--line);
+  background: #171717;
 }
 
-.schema-rule:last-child {
-  border-bottom: none;
+.schema-rule:nth-child(even) {
+  background: #0e0e0e;
 }
 
 .schema-rule input[type="radio"] {
@@ -788,7 +789,7 @@ pre {
   }
 
   .output-panel .view-toggle {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .action-row {

@@ -1,4 +1,5 @@
 import { processWithRustWasm, processWithTypeScriptCore } from './playground-processor.js';
+import { parseSchemaText, schemaToAeon } from './schema-codec.js';
 import { BUILTIN_SCHEMA_TYPES_BY_DATATYPE, seedSchemaFromAeonSource } from './schema-seed.js';
 
 const SAMPLE = `//# AEON alignment playground sample
@@ -31,6 +32,7 @@ const SAMPLE_SCHEMA = {
 
 const outputState = {
   canonical: '',
+  aes: '',
   finalized: '',
   annotations: '',
   comparison: '',
@@ -49,7 +51,7 @@ const SAMPLE_PRESETS = {
       finalizeScope: 'payload',
       includePaths: '',
       schemaEnabled: false,
-      schemaText: JSON.stringify(SAMPLE_SCHEMA, null, 2),
+      schemaText: schemaToAeon(SAMPLE_SCHEMA),
     },
   },
   loose: {
@@ -76,7 +78,7 @@ app = {
       finalizeScope: 'payload',
       includePaths: '',
       schemaEnabled: false,
-      schemaText: JSON.stringify({ ...SAMPLE_SCHEMA, world: 'open' }, null, 2),
+      schemaText: schemaToAeon({ ...SAMPLE_SCHEMA, world: 'open' }),
     },
   },
   custom: {
@@ -102,7 +104,7 @@ app:object = {
       finalizeScope: 'payload',
       includePaths: '',
       schemaEnabled: false,
-      schemaText: JSON.stringify(SAMPLE_SCHEMA, null, 2),
+      schemaText: schemaToAeon(SAMPLE_SCHEMA),
     },
   },
 };
@@ -142,6 +144,7 @@ const viewMetaEl = document.getElementById('view-meta');
 const runStatusEl = document.getElementById('run-status');
 const diagStatusEl = document.getElementById('diag-status');
 const tabCanonicalBtn = document.getElementById('tab-canonical');
+const tabAesBtn = document.getElementById('tab-aes');
 const tabFinalizedBtn = document.getElementById('tab-finalized');
 const tabAnnotationsBtn = document.getElementById('tab-annotations');
 const tabComparisonBtn = document.getElementById('tab-comparison');
@@ -159,6 +162,8 @@ const sourceTabInsertsTabEl = document.getElementById('source-tab-inserts-tab');
 const fileOpenBtn = document.getElementById('file-open');
 const fileSaveBtn = document.getElementById('file-save');
 const fileSaveAsBtn = document.getElementById('file-save-as');
+const aeosImportBtn = document.getElementById('aeos-import');
+const aeosExportBtn = document.getElementById('aeos-export');
 const importImageBase64Btn = document.getElementById('import-image-base64');
 const currentFilePathEl = document.getElementById('current-file-path');
 const menuToggleBtn = document.getElementById('menu-toggle');
@@ -168,6 +173,11 @@ filePickerEl.type = 'file';
 filePickerEl.accept = '.aeon,text/plain';
 filePickerEl.hidden = true;
 document.body.append(filePickerEl);
+const aeosPickerEl = document.createElement('input');
+aeosPickerEl.type = 'file';
+aeosPickerEl.accept = '.aeos,.aeon,text/plain';
+aeosPickerEl.hidden = true;
+document.body.append(aeosPickerEl);
 
 function setStatus(el, text, tone) {
   el.textContent = text;
@@ -198,7 +208,7 @@ function describeSchemaOptions(options) {
     return 'schema: inactive';
   }
   try {
-    const schema = JSON.parse(options.schemaText || '{}');
+    const schema = parseSchemaText(options.schemaText, options);
     const rules = Array.isArray(schema.rules) ? schema.rules.length : 0;
     return `schema: active (${schema.world === 'closed' ? 'closed' : 'open'} · ${rules} rule${rules === 1 ? '' : 's'})`;
   } catch {
@@ -290,12 +300,15 @@ function renderOutputHtml(view) {
 function setOutputView(view) {
   outputState.view = view;
   tabCanonicalBtn.classList.toggle('is-active', view === 'canonical');
+  tabAesBtn.classList.toggle('is-active', view === 'aes');
   tabFinalizedBtn.classList.toggle('is-active', view === 'finalized');
   tabAnnotationsBtn.classList.toggle('is-active', view === 'annotations');
   tabComparisonBtn.classList.toggle('is-active', view === 'comparison');
   outputEl.innerHTML = renderOutputHtml(view);
   if (view === 'canonical') {
     viewMetaEl.textContent = describeCanonicalText(outputState.canonical || '');
+  } else if (view === 'aes') {
+    viewMetaEl.textContent = 'AES shows normalized compile events as path-addressed rows.';
   } else if (view === 'finalized') {
     viewMetaEl.textContent = 'Finalized JSON is materialized from the validation-mode compile/finalize pipeline.';
   } else if (view === 'annotations') {
@@ -383,6 +396,7 @@ function wrapRaw(type, html) {
 
 const AEON_IDENTIFIER = '[A-Za-z_][A-Za-z0-9_]*';
 const AEON_QUOTED = '"(?:\\\\.|[^"])*"|\'(?:\\\\.|[^\'])*\'';
+const AEON_QUOTED_KEY = `(?:${AEON_QUOTED})`;
 const AEON_KEY = `(?:${AEON_IDENTIFIER}|${AEON_QUOTED})`;
 const AEON_TYPE = `:${AEON_IDENTIFIER}(?:<[^>\\n]+>)?(?:\\[\\s*[A-Za-z0-9!#$%&*+\\-.:;=?@^_|~<>]\\s*\\])*`;
 const AEON_REFERENCE =
@@ -604,6 +618,7 @@ function tokenizeAeonLine(line, state) {
     ['node-open', new RegExp(`<${AEON_IDENTIFIER}`, 'y')],
     ['attr-open', /@\{/y],
     ['attr-close', /\}/y],
+    ['quoted-key', new RegExp(`${AEON_QUOTED_KEY}(?=\\s*(?:${AEON_TYPE}\\s*=|@\\{|=))`, 'y')],
     ['typed-key', new RegExp(`${AEON_KEY}(?=\\s*${AEON_TYPE}\\s*=)`, 'y')],
     ['typed-value', new RegExp(`${AEON_TYPE}(?=\\s*=)`, 'y')],
     ['key', new RegExp(`${AEON_KEY}(?=\\s*(?:@\\{|=))`, 'y')],
@@ -661,6 +676,9 @@ function tokenizeAeonLine(line, state) {
         case 'key':
           html += wrapToken('key', match[0]);
           break;
+        case 'quoted-key':
+          html += wrapToken('quoted-key', match[0]);
+          break;
         case 'typed-value':
         case 'type':
           html += wrapToken('punct', ':') + wrapToken('type', match[0].slice(1));
@@ -708,7 +726,7 @@ function syncSourceHighlight() {
 
 function syncSchemaHighlight() {
   const code = schemaHighlightEl.querySelector('code');
-  code.innerHTML = `${highlightJson(schemaInputEl.value)}\n`;
+  code.innerHTML = `${highlightAeon(schemaInputEl.value)}\n`;
   schemaGutterEl.textContent = renderLineNumbers(schemaInputEl.value);
 }
 
@@ -774,8 +792,118 @@ function describeFinalizeScope(scope) {
   return 'payload only';
 }
 
+function formatAesCell(value) {
+  if (value === null || value === undefined || value === '') {
+    return '·';
+  }
+  if (typeof value === 'string') {
+    return value.replace(/\s+/g, ' ');
+  }
+  return JSON.stringify(value);
+}
+
+function pathSegments(path) {
+  const segments = [];
+  const tokenRe = /\.([A-Za-z_][A-Za-z0-9_]*)|\["((?:\\.|[^"\\])*)"\]|\[(\d+)\]/g;
+  for (const match of path.matchAll(tokenRe)) {
+    if (match[1] !== undefined) {
+      segments.push(match[1]);
+    } else if (match[2] !== undefined) {
+      try {
+        segments.push(JSON.parse(`"${match[2]}"`));
+      } catch {
+        segments.push(match[2]);
+      }
+    } else if (match[3] !== undefined) {
+      segments.push(Number.parseInt(match[3], 10));
+    }
+  }
+  return segments;
+}
+
+function readNestedValue(root, segments) {
+  let value = root;
+  for (const segment of segments) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    value = value[segment];
+  }
+  return value;
+}
+
+function valueFromFinalizedPath(path, document) {
+  if (!document || typeof path !== 'string') {
+    return undefined;
+  }
+
+  const segments = pathSegments(path);
+  if (segments.length === 0) {
+    return document;
+  }
+
+  const first = segments[0];
+  if (typeof first === 'string' && first.startsWith('aeon:')) {
+    const headerKey = first.slice('aeon:'.length);
+    return readNestedValue(document.header ?? document, [headerKey, ...segments.slice(1)]);
+  }
+
+  const bodyRoot = document && typeof document === 'object' && 'payload' in document
+    ? document.payload
+    : document;
+  return readNestedValue(bodyRoot, segments);
+}
+
+function formatAesValue(event, document) {
+  if (event.raw !== null && event.raw !== undefined) {
+    return String(event.raw);
+  }
+  if (event.value !== null && event.value !== undefined) {
+    return formatAesCell(event.value);
+  }
+  const finalizedValue = valueFromFinalizedPath(event.path, document);
+  if (finalizedValue !== undefined && (finalizedValue === null || typeof finalizedValue !== 'object')) {
+    return formatAesCell(finalizedValue);
+  }
+  return '·';
+}
+
+function padCell(value, width) {
+  const text = String(value);
+  return `${text}${' '.repeat(Math.max(0, width - text.length))}`;
+}
+
+function renderAesTable(events, document) {
+  if (!events || events.length === 0) {
+    return 'No AES events available.';
+  }
+
+  const rows = events.map((event, index) => [
+    String(index + 1),
+    formatAesCell(event.path),
+    formatAesCell(event.key),
+    formatAesCell(event.valueType),
+    formatAesCell(event.datatype),
+    formatAesValue(event, document),
+  ]);
+  const headers = ['#', 'Path', 'Key', 'Value Type', 'Datatype', 'Value'];
+  const widths = headers.map((header, column) => Math.max(
+    header.length,
+    ...rows.map((row) => row[column].length),
+  ));
+  const formatRow = (row) => row.map((cell, column) => padCell(cell, widths[column])).join('  ');
+  const divider = widths.map((width) => '-'.repeat(width)).join('  ');
+
+  return [
+    formatRow(headers),
+    divider,
+    ...rows.map(formatRow),
+  ].join('\n');
+}
+
 function renderResult(result, options) {
   outputState.canonical = result.canonical?.text ?? '';
+  outputState.aes = renderAesTable(result.events ?? [], result.finalized?.document);
   outputState.finalized = result.finalized?.document !== null && result.finalized?.document !== undefined
     ? JSON.stringify(result.finalized.document, null, 2)
     : 'Unavailable in "none" mode.';
@@ -927,6 +1055,7 @@ async function run(processor) {
 
   if (options.materializationMode === 'projected' && options.includePaths.length === 0 && options.validationMode !== 'none') {
     outputState.canonical = '';
+    outputState.aes = '';
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
@@ -947,6 +1076,7 @@ async function run(processor) {
     renderResult(result, options);
   } catch (error) {
     outputState.canonical = '';
+    outputState.aes = '';
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
@@ -972,6 +1102,7 @@ async function runComparison() {
 
   if (options.materializationMode === 'projected' && options.includePaths.length === 0 && options.validationMode !== 'none') {
     outputState.canonical = '';
+    outputState.aes = '';
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
@@ -988,6 +1119,7 @@ async function runComparison() {
   try {
     const { tsResult, rustResult } = await compareEngines(sourceEl.value, options);
     outputState.canonical = tsResult.canonical?.text ?? '';
+    outputState.aes = renderAesTable(tsResult.events ?? [], tsResult.finalized?.document);
     outputState.finalized = tsResult.finalized?.document !== null && tsResult.finalized?.document !== undefined
       ? JSON.stringify(tsResult.finalized.document, null, 2)
       : 'Unavailable in "none" mode.';
@@ -1004,6 +1136,7 @@ async function runComparison() {
     setStatus(diagStatusEl, mismatch ? '1 mismatch' : 'clean', mismatch ? 'error' : 'ok');
   } catch (error) {
     outputState.canonical = '';
+    outputState.aes = '';
     outputState.finalized = '';
     outputState.annotations = '';
     outputState.comparison = '';
@@ -1023,7 +1156,7 @@ function applySettings(settings) {
   finalizeScopeEl.value = settings.finalizeScope;
   includePathsEl.value = settings.includePaths;
   schemaEnabledEl.checked = Boolean(settings.schemaEnabled);
-  schemaInputEl.value = settings.schemaText ?? JSON.stringify(SAMPLE_SCHEMA, null, 2);
+  schemaInputEl.value = settings.schemaText ?? schemaToAeon(SAMPLE_SCHEMA);
   schemaInputEl.disabled = !schemaEnabledEl.checked;
   syncSchemaHighlight();
   includePathsEl.disabled = settings.materializationMode !== 'projected';
@@ -1034,11 +1167,12 @@ function parseSchemaTextOrDefault() {
   if (!text) {
     return structuredClone(SAMPLE_SCHEMA);
   }
-  const schema = JSON.parse(text);
-  return {
-    world: schema.world === 'closed' ? 'closed' : 'open',
-    rules: Array.isArray(schema.rules) ? schema.rules : [],
-  };
+  return parseSchemaText(text, {
+    validationMode: validationModeEl.value,
+    maxSeparatorDepth: readPositiveInt(separatorDepthEl, 8),
+    maxAttributeDepth: readPositiveInt(attributeDepthEl, 1),
+    maxGenericDepth: readPositiveInt(genericDepthEl, 1),
+  });
 }
 
 const SCHEMA_TYPE_OPTIONS = [
@@ -1574,6 +1708,48 @@ async function saveAeonFile(saveAs = false) {
   }
 }
 
+async function importAeosOptions() {
+  try {
+    aeosPickerEl.value = '';
+    const file = await new Promise((resolve) => {
+      aeosPickerEl.onchange = () => resolve(aeosPickerEl.files?.[0] ?? null);
+      aeosPickerEl.click();
+    });
+    if (!file) {
+      setStatus(runStatusEl, 'import cancelled', 'warn');
+      return;
+    }
+
+    schemaInputEl.value = await file.text();
+    schemaEnabledEl.checked = true;
+    schemaInputEl.disabled = false;
+    syncSchemaHighlight();
+    setInputView('schema');
+    setStatus(runStatusEl, 'aeos imported', 'ok');
+    setStatus(diagStatusEl, 'stale', 'warn');
+  } catch (error) {
+    setStatus(runStatusEl, 'aeos import failed', 'error');
+    diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
+    setStatus(diagStatusEl, '1 error', 'error');
+  }
+}
+
+function exportAeosOptions() {
+  try {
+    const href = URL.createObjectURL(new Blob([schemaInputEl.value], { type: 'text/plain;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = 'playground.aeos';
+    link.click();
+    URL.revokeObjectURL(href);
+    setStatus(runStatusEl, 'aeos exported', 'ok');
+  } catch (error) {
+    setStatus(runStatusEl, 'aeos export failed', 'error');
+    diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
+    setStatus(diagStatusEl, '1 error', 'error');
+  }
+}
+
 async function chooseImageImport() {
   try {
     const picker = document.createElement('input');
@@ -1650,6 +1826,7 @@ finalizeScopeEl.addEventListener('change', () => {
 });
 
 tabCanonicalBtn.addEventListener('click', () => setOutputView('canonical'));
+tabAesBtn.addEventListener('click', () => setOutputView('aes'));
 tabFinalizedBtn.addEventListener('click', () => setOutputView('finalized'));
 tabAnnotationsBtn.addEventListener('click', () => setOutputView('annotations'));
 tabComparisonBtn.addEventListener('click', () => setOutputView('comparison'));
@@ -1659,7 +1836,7 @@ tabOptionsBtn.addEventListener('click', () => setInputView('options'));
 schemaSampleBtn.addEventListener('click', () => {
   schemaEnabledEl.checked = true;
   schemaInputEl.disabled = false;
-  schemaInputEl.value = JSON.stringify(SAMPLE_SCHEMA, null, 2);
+  schemaInputEl.value = schemaToAeon(SAMPLE_SCHEMA);
   syncSchemaHighlight();
   setStatus(runStatusEl, 'schema sample', 'ok');
   setStatus(diagStatusEl, 'stale', 'warn');
@@ -1667,7 +1844,7 @@ schemaSampleBtn.addEventListener('click', () => {
 schemaBuilderOpenBtn.addEventListener('click', openSchemaBuilder);
 schemaBuilderCloseBtn.addEventListener('click', closeSchemaBuilder);
 schemaBuilderApplyBtn.addEventListener('click', () => {
-  schemaInputEl.value = JSON.stringify(collectSchemaFromBuilder(), null, 2);
+  schemaInputEl.value = schemaToAeon(collectSchemaFromBuilder());
   schemaEnabledEl.checked = true;
   schemaInputEl.disabled = false;
   syncSchemaHighlight();
@@ -1765,6 +1942,14 @@ fileSaveBtn.addEventListener('click', () => {
 fileSaveAsBtn.addEventListener('click', () => {
   closeMenu();
   void saveAeonFile(true);
+});
+aeosImportBtn.addEventListener('click', () => {
+  closeMenu();
+  void importAeosOptions();
+});
+aeosExportBtn.addEventListener('click', () => {
+  closeMenu();
+  exportAeosOptions();
 });
 importImageBase64Btn.addEventListener('click', () => {
   closeMenu();

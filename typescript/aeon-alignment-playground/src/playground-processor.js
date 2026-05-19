@@ -3,6 +3,7 @@ import { canonicalize } from '@altopelago/aeon-canonical';
 import { compile, formatPath } from '@altopelago/aeon-core';
 import { finalizeJson } from '@altopelago/aeon-finalize';
 import { loadAeonWasm } from '@altopelago/aeon-wasm';
+import { parseSchemaText } from './schema-codec.js';
 
 let defaultWasmInputPromise;
 
@@ -85,7 +86,7 @@ function normalizeTsEvents(events) {
     key: event.key,
     datatype: event.datatype ?? null,
     valueType: valueTypeName(event.value),
-  }));
+    }));
 }
 
 function normalizeDiagnostic(diag) {
@@ -145,38 +146,7 @@ function parseSchemaOption(options) {
   if (!options.schemaEnabled) {
     return null;
   }
-  const raw = String(options.schemaText ?? '').trim();
-  if (!raw) {
-    return null;
-  }
-  const schema = JSON.parse(raw);
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
-    throw new Error('Schema must be a JSON object.');
-  }
-  if (!Array.isArray(schema.rules)) {
-    throw new Error('Schema must include a rules array.');
-  }
-  if (schema.world !== undefined && schema.world !== 'open' && schema.world !== 'closed') {
-    throw new Error('Schema world must be "open" or "closed".');
-  }
-  return {
-    world: schema.world === 'closed' ? 'closed' : 'open',
-    rules: schema.rules.map((rule, index) => {
-      if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-        throw new Error(`Schema rule ${index + 1} must be an object.`);
-      }
-      if (typeof rule.path !== 'string' || rule.path.length === 0) {
-        throw new Error(`Schema rule ${index + 1} must include a path.`);
-      }
-      if (!rule.constraints || typeof rule.constraints !== 'object' || Array.isArray(rule.constraints)) {
-        throw new Error(`Schema rule ${index + 1} must include constraints.`);
-      }
-      return {
-        path: rule.path,
-        constraints: rule.constraints,
-      };
-    }),
-  };
+  return parseSchemaText(options.schemaText, options);
 }
 
 function schemaDiag(code, path, message, span = null) {

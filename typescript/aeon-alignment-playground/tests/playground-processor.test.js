@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import fixtures from '../fixtures/playground-parity.json' with { type: 'json' };
 import { processWithRustWasm, processWithTypeScriptCore } from '../src/playground-processor.js';
+import { parseSchemaText, schemaToAeon } from '../src/schema-codec.js';
 import { seedSchemaFromAeonSource } from '../src/schema-seed.js';
 
 const LOCAL_WASM_ARTIFACT = resolve(
@@ -160,6 +161,48 @@ test('typescript playground applies custom schema validation', async () => {
     result.errors.map((error) => error.code),
     ['numeric_max_value'],
   );
+});
+
+test('typescript playground accepts AEON schema text', async () => {
+  const result = await processWithTypeScriptCore(
+    'app:object = {\n  name:string = "ok"\n  port:number = 70000\n}\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: schemaToAeon({
+        world: 'open',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', required: true } },
+          { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+          { path: '$.app.port', constraints: { type: 'NumberLiteral', required: true, max_value: '65535' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => error.code),
+    ['numeric_max_value'],
+  );
+});
+
+test('schema codec emits AEOS wrapper and format directive', () => {
+  const schemaText = schemaToAeon({
+    world: 'open',
+    rules: [
+      { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+    ],
+  });
+
+  assert.match(schemaText, /^\/\/! format:aeos-v1\n/);
+  assert.match(schemaText, /aeos:schema = \{/);
+  assert.deepEqual(parseSchemaText(schemaText), {
+    world: 'open',
+    rules: [
+      { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+    ],
+  });
 });
 
 test('typescript playground rejects unexpected bindings in closed schema world', async () => {
