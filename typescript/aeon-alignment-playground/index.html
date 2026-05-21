@@ -48,6 +48,7 @@
                 <input id="source-tab-inserts-tab" type="checkbox" />
                 <span>Tab inserts <code>\t</code></span>
               </label>
+              <button id="source-builder-open" type="button">Build Source</button>
               <p class="meta-note">Browser edit shortcuts are available for cut, copy, paste, and select all.</p>
             </div>
             <div class="highlight-editor">
@@ -137,7 +138,6 @@
                 <button id="tab-annotations" class="view-tab" type="button">Annotations</button>
                 <button id="tab-comparison" class="view-tab" type="button">Comparison</button>
               </div>
-              <span id="run-meta" class="output-run-meta">processor: typescript · materialization: all</span>
             </div>
           </div>
           <p id="view-meta" class="meta-note">Canonical AEON is derived from the raw source. Finalized JSON comes from the validation-mode processing pipeline. Annotation Stream reflects the structured comments found in the current source.</p>
@@ -172,9 +172,34 @@
             <button id="schema-add-attribute" type="button">Add Attribute</button>
             <button id="schema-seed-source" type="button">Seed From Source</button>
           </div>
-          <div id="schema-rule-list" class="schema-rule-list"></div>
+          <div class="source-builder-workspace schema-builder-workspace">
+            <div id="schema-rule-list" class="source-tree schema-tree" aria-label="Schema rules"></div>
+            <div id="schema-detail" class="source-detail schema-detail"></div>
+          </div>
           <div class="modal-foot">
             <button id="schema-builder-apply" class="verify-btn" type="button">Apply Schema</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="source-builder-modal" class="modal-backdrop" hidden>
+        <section class="schema-builder source-builder" role="dialog" aria-modal="true" aria-labelledby="source-builder-title">
+          <div class="modal-head">
+            <h2 id="source-builder-title">Source Builder</h2>
+            <button id="source-builder-close" type="button" aria-label="Close source builder">Close</button>
+          </div>
+          <div class="schema-builder-toolbar">
+            <button id="source-add-peer" type="button">Add Peer Binding</button>
+            <button id="source-add-child" type="button">Add Child Binding</button>
+            <button id="source-add-attribute" type="button">Add Attribute</button>
+            <button id="source-builder-load-source" type="button">Reload From Source</button>
+          </div>
+          <div class="source-builder-workspace">
+            <div id="source-rule-list" class="source-tree" aria-label="Source bindings"></div>
+            <div id="source-detail" class="source-detail"></div>
+          </div>
+          <div class="modal-foot">
+            <button id="source-builder-apply" class="verify-btn" type="button">Apply Source</button>
           </div>
         </section>
       </div>

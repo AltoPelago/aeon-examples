@@ -1,6 +1,7 @@
 import { processWithRustWasm, processWithTypeScriptCore } from './playground-processor.js';
 import { parseSchemaText, schemaToAeon } from './schema-codec.js';
 import { BUILTIN_SCHEMA_TYPES_BY_DATATYPE, seedSchemaFromAeonSource } from './schema-seed.js';
+import { compile, formatPath } from '@altopelago/aeon-core';
 
 const SAMPLE = `//# AEON alignment playground sample
 aeon:header = {
@@ -127,6 +128,16 @@ const schemaEnabledEl = document.getElementById('schema-enabled');
 const schemaInputEl = document.getElementById('schema-input');
 const schemaBuilderOpenBtn = document.getElementById('schema-builder-open');
 const schemaSampleBtn = document.getElementById('schema-sample');
+const sourceBuilderOpenBtn = document.getElementById('source-builder-open');
+const sourceBuilderModalEl = document.getElementById('source-builder-modal');
+const sourceBuilderCloseBtn = document.getElementById('source-builder-close');
+const sourceBuilderApplyBtn = document.getElementById('source-builder-apply');
+const sourceBuilderLoadSourceBtn = document.getElementById('source-builder-load-source');
+const sourceAddPeerBtn = document.getElementById('source-add-peer');
+const sourceAddChildBtn = document.getElementById('source-add-child');
+const sourceAddAttributeBtn = document.getElementById('source-add-attribute');
+const sourceRuleListEl = document.getElementById('source-rule-list');
+const sourceDetailEl = document.getElementById('source-detail');
 const schemaBuilderModalEl = document.getElementById('schema-builder-modal');
 const schemaBuilderCloseBtn = document.getElementById('schema-builder-close');
 const schemaBuilderApplyBtn = document.getElementById('schema-builder-apply');
@@ -137,9 +148,9 @@ const schemaAddChildManyBtn = document.getElementById('schema-add-child-many');
 const schemaAddAttributeBtn = document.getElementById('schema-add-attribute');
 const schemaSeedSourceBtn = document.getElementById('schema-seed-source');
 const schemaRuleListEl = document.getElementById('schema-rule-list');
+const schemaDetailEl = document.getElementById('schema-detail');
 const outputEl = document.getElementById('output');
 const diagnosticsEl = document.getElementById('diagnostics');
-const runMetaEl = document.getElementById('run-meta');
 const viewMetaEl = document.getElementById('view-meta');
 const runStatusEl = document.getElementById('run-status');
 const diagStatusEl = document.getElementById('diag-status');
@@ -194,6 +205,24 @@ function readIncludePaths() {
     .split('\n')
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function writeIncludePaths(paths) {
+  includePathsEl.value = [...new Set(paths.map((value) => value.trim()).filter(Boolean))].join('\n');
+}
+
+function setIncludePath(path, enabled) {
+  const paths = readIncludePaths();
+  const next = enabled
+    ? [...paths, path]
+    : paths.filter((candidate) => candidate !== path);
+  writeIncludePaths(next);
+  if (enabled) {
+    materializationModeEl.value = 'projected';
+  }
+  includePathsEl.disabled = materializationModeEl.value !== 'projected';
+  setStatus(runStatusEl, 'stale', 'warn');
+  setStatus(diagStatusEl, 'stale', 'warn');
 }
 
 function readSchemaOptions() {
@@ -911,8 +940,6 @@ function renderResult(result, options) {
   outputState.comparison = '';
   setOutputView(outputState.view);
 
-  runMetaEl.textContent = `processor: ${options.processor} · materialization: ${options.materializationMode} · finalize scope: ${describeFinalizeScope(options.finalizeScope)} · validation mode: ${options.validationMode} · ${describeSchemaOptions(options)} · display source: raw input · validation source: ${describeValidationSource(options.validationMode)}`;
-
   if (result.errors.length > 0) {
     diagnosticsEl.textContent = result.errors.map(formatDiagnostic).join('\n');
     setStatus(runStatusEl, 'error', 'error');
@@ -1128,7 +1155,6 @@ async function runComparison() {
     setOutputView('comparison');
 
     const mismatch = outputState.comparison.startsWith('status: mismatch');
-    runMetaEl.textContent = `processor: compare · materialization: ${options.materializationMode} · finalize scope: ${describeFinalizeScope(options.finalizeScope)} · validation mode: ${options.validationMode} · ${describeSchemaOptions(options)} · display source: raw input · validation source: ${describeValidationSource(options.validationMode)}`;
     diagnosticsEl.textContent = mismatch
       ? '1. TypeScript and Rust WASM normalized outputs differ. See Comparison.'
       : 'processor: compare\nstatus: normalized outputs match';
@@ -1182,6 +1208,9 @@ const SCHEMA_TYPE_OPTIONS = [
     'FloatLiteral',
     'BooleanLiteral',
     'ToggleLiteral',
+    'NullLiteral',
+    'NaNLiteral',
+    'InfinityLiteral',
     'ObjectNode',
     'ListNode',
     'TupleNode',
@@ -1227,7 +1256,12 @@ const NUMERIC_CONSTRAINT_TYPES = new Set([
 ]);
 const NUMERIC_WIDENING_TYPES = new Set(['NumberLiteral', 'IntegerLiteral', 'FloatLiteral', 'HexLiteral', 'RadixLiteral']);
 const CONTAINER_CONSTRAINT_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode', 'NodeLiteral']);
-function schemaRuleHtml(rule, index, selectedPath, hasChildRules = false) {
+let schemaBuilderSchema = structuredClone(SAMPLE_SCHEMA);
+let schemaBuilderSelectedPath = null;
+let schemaBuilderOpenPaths = new Set();
+let schemaBuilderOpenPathsInitialized = false;
+
+function schemaRuleFieldsHtml(rule, hasChildRules = false) {
   const constraints = rule.constraints ?? {};
   const type = constraints.type ?? '';
   const path = rule.path ?? '$.field';
@@ -1239,44 +1273,48 @@ function schemaRuleHtml(rule, index, selectedPath, hasChildRules = false) {
       : 'custom';
   const customNullValue = nullValuePreset === 'custom' ? nullValue : '';
   return `
-    <div class="schema-rule" data-index="${index}">
-      <input name="schema-selected-rule" type="radio" ${path === selectedPath ? 'checked' : ''} />
-      <label class="control-field">
-        <span>Path</span>
-        <input data-field="path" type="text" value="${escapeHtml(path)}" />
+      <label class="control-field schema-field-full">
+        <span>Key${hasChildRules ? '<small>has child rules</small>' : ''}</span>
+        <input data-field="path" type="text" value="${escapeHtml(pathEditableName(path))}" ${pathAllowsNameEdit(path) ? '' : 'disabled'} />
       </label>
-      <label class="control-field">
-        <span>Type${hasChildRules ? '<small>Has child rules</small>' : ''}</span>
+      <label class="control-field schema-field-full">
+        <span>Type</span>
         <select data-field="type">${hasChildRules ? '' : '<option value="">any</option>'}${schemaTypeOptions(type, hasChildRules)}</select>
       </label>
-      <label class="control-field">
+      <label class="control-field schema-field-full">
         <span>Custom datatype</span>
         <input data-field="datatype" type="text" value="${escapeHtml(constraints.datatype ?? '')}" placeholder="optional tag" />
       </label>
-      <label class="inline-toggle">
+      <label class="inline-toggle schema-field-full">
         <input data-field="required" type="checkbox" ${constraints.required === true ? 'checked' : ''} />
         <span>Required</span>
       </label>
       <div class="constraint-grid">
-        <input data-field="min_length" data-constraint-kind="string" type="number" min="0" placeholder="min length" value="${constraints.min_length ?? ''}" />
-        <input data-field="max_length" data-constraint-kind="string" type="number" min="0" placeholder="max length" value="${constraints.max_length ?? ''}" />
+        <div class="schema-pair" data-constraint-kind="string">
+          <input data-field="min_length" type="number" min="0" placeholder="min length" value="${constraints.min_length ?? ''}" />
+          <input data-field="max_length" type="number" min="0" placeholder="max length" value="${constraints.max_length ?? ''}" />
+        </div>
         <input data-field="pattern" data-constraint-kind="string" type="text" placeholder="pattern" value="${escapeHtml(constraints.pattern ?? '')}" />
         <input data-field="length_exact" data-constraint-kind="container" type="number" min="0" placeholder="exact children" value="${constraints.length_exact ?? ''}" />
-        <input data-field="min_children" data-constraint-kind="container" type="number" min="0" placeholder="min children" value="${constraints.min_children ?? ''}" />
-        <input data-field="max_children" data-constraint-kind="container" type="number" min="0" placeholder="max children" value="${constraints.max_children ?? ''}" />
+        <div class="schema-pair" data-constraint-kind="container">
+          <input data-field="min_children" type="number" min="0" placeholder="min children" value="${constraints.min_children ?? ''}" />
+          <input data-field="max_children" type="number" min="0" placeholder="max children" value="${constraints.max_children ?? ''}" />
+        </div>
         <select data-field="sign" data-constraint-kind="numeric">
           <option value="">any sign</option>
           <option value="signed"${constraints.sign === 'signed' ? ' selected' : ''}>signed</option>
           <option value="unsigned"${constraints.sign === 'unsigned' ? ' selected' : ''}>unsigned</option>
         </select>
-        <input data-field="min_value" data-constraint-kind="numeric" type="text" placeholder="min value" value="${escapeHtml(constraints.min_value ?? '')}" />
-        <input data-field="max_value" data-constraint-kind="numeric" type="text" placeholder="max value" value="${escapeHtml(constraints.max_value ?? '')}" />
+        <div class="schema-pair" data-constraint-kind="numeric">
+          <input data-field="min_value" type="text" placeholder="min value" value="${escapeHtml(constraints.min_value ?? '')}" />
+          <input data-field="max_value" type="text" placeholder="max value" value="${escapeHtml(constraints.max_value ?? '')}" />
+        </div>
         <select data-field="toggle_pair" data-constraint-kind="toggle">
           <option value="">any toggle</option>
           <option value="yes_no"${constraints.toggle_pair === 'yes_no' ? ' selected' : ''}>yes / no</option>
           <option value="on_off"${constraints.toggle_pair === 'on_off' ? ' selected' : ''}>on / off</option>
         </select>
-        <label class="inline-toggle" data-constraint-kind="nullable">
+        <label class="inline-toggle schema-toggle-row" data-constraint-kind="nullable">
           <input data-field="nullable" type="checkbox" ${constraints.nullable === true ? 'checked' : ''} />
           <span>Allow null</span>
         </label>
@@ -1287,17 +1325,17 @@ function schemaRuleHtml(rule, index, selectedPath, hasChildRules = false) {
           <option value="custom"${nullValuePreset === 'custom' ? ' selected' : ''}>custom null</option>
         </select>
         <input data-field="null_value_custom" data-constraint-kind="null" type="text" placeholder="custom null value" value="${escapeHtml(customNullValue)}" />
-        <label class="inline-toggle" data-constraint-kind="numeric-widening">
-          <input data-field="allow_infinity" type="checkbox" ${constraints.allow_infinity === true ? 'checked' : ''} />
-          <span>Allow infinity</span>
-        </label>
-        <label class="inline-toggle" data-constraint-kind="numeric-widening">
-          <input data-field="allow_nan" type="checkbox" ${constraints.allow_nan === true ? 'checked' : ''} />
-          <span>Allow NaN</span>
-        </label>
+        <div class="schema-pair schema-toggle-pair" data-constraint-kind="numeric-widening">
+          <label class="inline-toggle schema-toggle-row">
+            <input data-field="allow_infinity" type="checkbox" ${constraints.allow_infinity === true ? 'checked' : ''} />
+            <span>Allow infinity</span>
+          </label>
+          <label class="inline-toggle schema-toggle-row">
+            <input data-field="allow_nan" type="checkbox" ${constraints.allow_nan === true ? 'checked' : ''} />
+            <span>Allow NaN</span>
+          </label>
+        </div>
       </div>
-      <button class="schema-rule-remove" type="button" aria-label="Remove rule">×</button>
-    </div>
   `;
 }
 
@@ -1394,6 +1432,12 @@ function validateSchemaRuleRow(row) {
     return;
   }
   clearSchemaRuleValidation(row);
+  const keyInput = row.querySelector('[data-field="path"]');
+  const currentPath = row.dataset.path ?? schemaBuilderSelectedPath ?? '';
+  const candidatePath = pathWithEditableName(currentPath, keyInput?.value.trim() ?? '');
+  if (hasDuplicatePath(schemaBuilderSchema.rules, candidatePath, currentPath)) {
+    markSchemaRuleInvalid(row, ['path'], 'Duplicate binding name at this level.');
+  }
 
   const minLength = readSchemaNumber(row, 'min_length');
   const maxLength = readSchemaNumber(row, 'max_length');
@@ -1434,9 +1478,7 @@ function validateSchemaRuleRow(row) {
 }
 
 function updateAllSchemaConstraintStates() {
-  for (const row of schemaRuleListEl.querySelectorAll('.schema-rule')) {
-    updateSchemaConstraintState(row);
-  }
+  updateSchemaConstraintState(schemaDetailEl.querySelector('.schema-rule'));
 }
 
 function isSchemaChildPath(parent, child) {
@@ -1470,13 +1512,71 @@ function schemaRuleHasDescendants(rule, rules) {
   return path.length > 0 && rules.some((candidate) => candidate !== rule && isSchemaChildPath(path, candidate.path ?? ''));
 }
 
-function selectSchemaRuleRow(row) {
-  const radio = row?.querySelector('input[name="schema-selected-rule"]');
-  if (radio instanceof HTMLInputElement) {
-    radio.checked = true;
+function schemaParentPath(path, rules) {
+  const parents = rules
+    .map((rule) => rule.path ?? '')
+    .filter((candidate) => candidate && candidate !== path && isSchemaChildPath(candidate, path))
+    .sort((left, right) => right.length - left.length);
+  return parents[0] ?? parentPath(path);
+}
+
+function schemaRuleIsVisible(rule, rules) {
+  let current = schemaParentPath(rule.path ?? '', rules);
+  while (current && current !== '$') {
+    const parent = rules.find((candidate) => candidate.path === current);
+    if (parent && schemaRuleHasDescendants(parent, rules) && !schemaBuilderOpenPaths.has(current)) {
+      return false;
+    }
+    current = schemaParentPath(current, rules);
   }
-  updateSchemaChildActionState();
-  scrollSchemaRuleIntoView(row);
+  return true;
+}
+
+function schemaTreeItemHtml(rule, rules, selectedPath) {
+  const path = rule.path ?? '$.field';
+  const hasChildren = schemaRuleHasDescendants(rule, rules);
+  const isOpen = schemaBuilderOpenPaths.has(path);
+  const segments = parseSourceBuilderPath(path);
+  const isAttribute = segments.at(-1)?.type === 'attr';
+  const depth = Math.max(0, segments.filter((segment) => segment.type !== 'attr').length - 1) + (isAttribute ? 1 : 0);
+  const name = segments.at(-1);
+  const label = isAttribute ? `@${name?.key ?? 'attr'}` : name?.type === 'index' ? `[${name.index}]` : name?.key ?? path;
+  const type = rule.constraints?.type || 'any';
+  const toggle = hasChildren
+    ? `<span class="source-tree-toggle" data-action="toggle" aria-hidden="true">${isOpen ? '▾' : '▸'}</span>`
+    : '<span class="source-tree-toggle" aria-hidden="true"></span>';
+  return `
+    <button class="source-tree-item schema-tree-item${path === selectedPath ? ' is-selected' : ''}" type="button" data-path="${escapeHtml(path)}" data-source-type="${escapeHtml(type)}" data-source-kind="${isAttribute ? 'attribute' : 'binding'}" aria-expanded="${hasChildren ? String(isOpen) : 'false'}" style="--source-depth: ${Math.min(depth, 6)};">
+      ${toggle}
+      <span class="source-tree-name">${escapeHtml(label)}${hasChildren ? '<small>children</small>' : ''}</span>
+      <span class="source-tree-meta">${escapeHtml(rule.constraints?.datatype || type)}</span>
+    </button>
+  `;
+}
+
+function schemaRuleDetailHtml(rule, rules) {
+  if (!rule) {
+    return '<div class="source-empty-detail">Select a rule to edit it.</div>';
+  }
+  const hasChildRules = schemaRuleHasDescendants(rule, rules);
+  return `
+    <div class="source-detail-head">
+      <div>
+        <h3>${escapeHtml(rule.path ?? '$.field')}</h3>
+        <p><span class="source-detail-type">${escapeHtml(rule.constraints?.type || 'any')}</span></p>
+      </div>
+      <button id="schema-remove-selected" type="button">Remove</button>
+    </div>
+    <div class="schema-rule source-detail-grid" data-path="${escapeHtml(rule.path ?? '$.field')}">
+      ${schemaRuleFieldsHtml(rule, hasChildRules)}
+    </div>
+  `;
+}
+
+function selectSchemaRulePath(path) {
+  syncSelectedSchemaDetail();
+  schemaBuilderSelectedPath = path;
+  renderSchemaBuilder(schemaBuilderSchema, schemaBuilderSelectedPath);
 }
 
 function scrollSchemaRuleIntoView(row) {
@@ -1486,90 +1586,151 @@ function scrollSchemaRuleIntoView(row) {
   row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-function renderSchemaBuilder(schema, selectedPath = null) {
-  const sortedSchema = sortSchemaRules(schema);
-  schemaBuilderWorldEl.value = schema.world === 'closed' ? 'closed' : 'open';
-  const activePath = selectedPath ?? sortedSchema.rules[0]?.path ?? null;
-  schemaRuleListEl.innerHTML = sortedSchema.rules
-    .map((rule, index) => schemaRuleHtml(rule, index, activePath, schemaRuleHasDescendants(rule, sortedSchema.rules)))
-    .join('');
-  updateAllSchemaConstraintStates();
-  updateSchemaChildActionState();
-  scrollSchemaRuleIntoView(schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked')?.closest('.schema-rule'));
-}
+function readSchemaRuleFromRow(row) {
+  const read = (field) => row.querySelector(`[data-field="${field}"]`);
+  const constraints = {};
+  const type = read('type')?.value.trim();
+  const datatype = read('datatype')?.value.trim();
+  const required = read('required')?.checked;
+  const nullable = read('nullable')?.checked;
+  const allowInfinity = read('allow_infinity')?.checked;
+  const allowNan = read('allow_nan')?.checked;
+  const sign = read('sign')?.value;
+  const togglePair = read('toggle_pair')?.value;
+  const pattern = read('pattern')?.value.trim();
+  const nullValuePreset = read('null_value_preset')?.value;
+  const customNullValue = read('null_value_custom')?.value.trim();
+  const minValue = read('min_value')?.value.trim();
+  const maxValue = read('max_value')?.value.trim();
 
-function collectSchemaFromBuilder() {
-  const rules = Array.from(schemaRuleListEl.querySelectorAll('.schema-rule')).map((row) => {
-    const read = (field) => row.querySelector(`[data-field="${field}"]`);
-    const constraints = {};
-    const type = read('type')?.value.trim();
-    const datatype = read('datatype')?.value.trim();
-    const required = read('required')?.checked;
-    const nullable = read('nullable')?.checked;
-    const allowInfinity = read('allow_infinity')?.checked;
-    const allowNan = read('allow_nan')?.checked;
-    const sign = read('sign')?.value;
-    const togglePair = read('toggle_pair')?.value;
-    const pattern = read('pattern')?.value.trim();
-    const nullValuePreset = read('null_value_preset')?.value;
-    const customNullValue = read('null_value_custom')?.value.trim();
-    const minValue = read('min_value')?.value.trim();
-    const maxValue = read('max_value')?.value.trim();
-
-    if (type) constraints.type = type;
-    if (datatype) constraints.datatype = datatype;
-    if (required) constraints.required = true;
-    if (nullable && !read('nullable')?.disabled) constraints.nullable = true;
-    if (allowInfinity && !read('allow_infinity')?.disabled) constraints.allow_infinity = true;
-    if (allowNan && !read('allow_nan')?.disabled) constraints.allow_nan = true;
-    if (sign && !read('sign')?.disabled) constraints.sign = sign;
-    if (togglePair && !read('toggle_pair')?.disabled) constraints.toggle_pair = togglePair;
-    if (!read('null_value_preset')?.disabled) {
-      if (nullValuePreset === 'custom' && customNullValue) {
-        constraints.null_value = customNullValue;
-      } else if (nullValuePreset && nullValuePreset !== 'custom') {
-        constraints.null_value = nullValuePreset;
-      }
+  if (type) constraints.type = type;
+  if (datatype) constraints.datatype = datatype;
+  if (required) constraints.required = true;
+  if (nullable && !read('nullable')?.disabled) constraints.nullable = true;
+  if (allowInfinity && !read('allow_infinity')?.disabled) constraints.allow_infinity = true;
+  if (allowNan && !read('allow_nan')?.disabled) constraints.allow_nan = true;
+  if (sign && !read('sign')?.disabled) constraints.sign = sign;
+  if (togglePair && !read('toggle_pair')?.disabled) constraints.toggle_pair = togglePair;
+  if (!read('null_value_preset')?.disabled) {
+    if (nullValuePreset === 'custom' && customNullValue) {
+      constraints.null_value = customNullValue;
+    } else if (nullValuePreset && nullValuePreset !== 'custom') {
+      constraints.null_value = nullValuePreset;
     }
-    if (pattern && !read('pattern')?.disabled) constraints.pattern = pattern;
-    if (minValue && !read('min_value')?.disabled) constraints.min_value = minValue;
-    if (maxValue && !read('max_value')?.disabled) constraints.max_value = maxValue;
+  }
+  if (pattern && !read('pattern')?.disabled) constraints.pattern = pattern;
+  if (minValue && !read('min_value')?.disabled) constraints.min_value = minValue;
+  if (maxValue && !read('max_value')?.disabled) constraints.max_value = maxValue;
 
-    for (const key of ['min_length', 'max_length', 'length_exact', 'min_children', 'max_children']) {
-      if (read(key)?.disabled) {
-        continue;
-      }
-      const value = Number.parseInt(read(key)?.value ?? '', 10);
-      if (Number.isFinite(value)) constraints[key] = value;
+  for (const key of ['min_length', 'max_length', 'length_exact', 'min_children', 'max_children']) {
+    if (read(key)?.disabled) {
+      continue;
     }
-
-    return {
-      path: read('path')?.value.trim() || '$.field',
-      constraints,
-    };
-  });
+    const value = Number.parseInt(read(key)?.value ?? '', 10);
+    if (Number.isFinite(value)) constraints[key] = value;
+  }
 
   return {
-    world: schemaBuilderWorldEl.value === 'closed' ? 'closed' : 'open',
-    rules,
+    path: pathWithEditableName(row.dataset.path ?? schemaBuilderSelectedPath ?? '$.field', read('path')?.value.trim() || pathEditableName(row.dataset.path ?? schemaBuilderSelectedPath ?? '$.field')),
+    constraints,
   };
 }
 
+function syncSelectedSchemaDetail() {
+  const row = schemaDetailEl.querySelector('.schema-rule');
+  if (!(row instanceof HTMLElement) || !schemaBuilderSelectedPath) {
+    return;
+  }
+  const index = schemaBuilderSchema.rules.findIndex((rule) => rule.path === schemaBuilderSelectedPath);
+  if (index < 0) {
+    return;
+  }
+  const nextRule = readSchemaRuleFromRow(row);
+  if (hasDuplicatePath(schemaBuilderSchema.rules, nextRule.path, schemaBuilderSelectedPath)) {
+    setPathControlInvalid(row.querySelector('[data-field="path"]'), true, 'Duplicate binding name at this level.');
+    return;
+  }
+  const oldPath = schemaBuilderSelectedPath;
+  if (nextRule.path !== oldPath) {
+    schemaBuilderSchema.rules = schemaBuilderSchema.rules.map((rule) => {
+      if (rule.path === oldPath) {
+        return nextRule;
+      }
+      return { ...rule, path: rebaseChildPath(rule.path, oldPath, nextRule.path) };
+    });
+  } else {
+    schemaBuilderSchema.rules[index] = nextRule;
+  }
+  schemaBuilderSelectedPath = nextRule.path;
+}
+
+function removeSelectedSchemaRule() {
+  syncSelectedSchemaDetail();
+  const selected = schemaBuilderSelectedPath;
+  schemaBuilderSchema.rules = schemaBuilderSchema.rules.filter((rule) => rule.path !== selected && !isSchemaChildPath(selected, rule.path));
+  schemaBuilderOpenPaths.delete(selected);
+  renderSchemaBuilder(schemaBuilderSchema, schemaBuilderSchema.rules[0]?.path ?? null);
+}
+
+function selectedSchemaRule() {
+  syncSelectedSchemaDetail();
+  return schemaBuilderSchema.rules.find((rule) => rule.path === schemaBuilderSelectedPath);
+}
+
 function selectedSchemaRulePath() {
-  const selected = schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked')?.closest('.schema-rule');
-  return selected?.querySelector('[data-field="path"]')?.value.trim() || '$.app';
+  return selectedSchemaRule()?.path || '$.app';
 }
 
 function selectedSchemaRuleAllowsChildren() {
-  const selected = schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked')?.closest('.schema-rule');
+  const selected = selectedSchemaRule();
   if (!selected) {
     return false;
   }
 
-  const type = selected.querySelector('[data-field="type"]')?.value;
-  const datatype = selected.querySelector('[data-field="datatype"]')?.value.trim().toLowerCase();
+  const type = selected.constraints?.type;
+  const datatype = String(selected.constraints?.datatype ?? '').trim().toLowerCase();
   return CHILD_CAPABLE_SCHEMA_TYPES.has(type)
     || CHILD_CAPABLE_DATATYPES.has(datatype);
+}
+
+function selectSchemaRuleRow(row) {
+  if (row instanceof HTMLElement) {
+    selectSchemaRulePath(row.dataset.path);
+  }
+  updateSchemaChildActionState();
+  scrollSchemaRuleIntoView(row);
+}
+
+function renderSchemaBuilder(schema, selectedPath = null) {
+  const sortedSchema = sortSchemaRules(schema);
+  schemaBuilderSchema = sortedSchema;
+  schemaBuilderWorldEl.value = schema.world === 'closed' ? 'closed' : 'open';
+  const activePath = selectedPath ?? sortedSchema.rules[0]?.path ?? null;
+  schemaBuilderSelectedPath = activePath;
+  if (!schemaBuilderOpenPathsInitialized) {
+    for (const rule of sortedSchema.rules) {
+      if (schemaRuleHasDescendants(rule, sortedSchema.rules)) {
+        schemaBuilderOpenPaths.add(rule.path);
+      }
+    }
+    schemaBuilderOpenPathsInitialized = true;
+  }
+  schemaRuleListEl.innerHTML = sortedSchema.rules
+    .filter((rule) => schemaRuleIsVisible(rule, sortedSchema.rules))
+    .map((rule) => schemaTreeItemHtml(rule, sortedSchema.rules, activePath))
+    .join('');
+  schemaDetailEl.innerHTML = schemaRuleDetailHtml(sortedSchema.rules.find((rule) => rule.path === activePath), sortedSchema.rules);
+  updateAllSchemaConstraintStates();
+  updateSchemaChildActionState();
+  scrollSchemaRuleIntoView(schemaRuleListEl.querySelector('.schema-tree-item.is-selected'));
+}
+
+function collectSchemaFromBuilder() {
+  syncSelectedSchemaDetail();
+  return {
+    world: schemaBuilderWorldEl.value === 'closed' ? 'closed' : 'open',
+    rules: schemaBuilderSchema.rules,
+  };
 }
 
 function updateSchemaChildActionState() {
@@ -1578,7 +1739,7 @@ function updateSchemaChildActionState() {
     button.disabled = !allowsChildren;
     button.title = allowsChildren ? '' : CHILD_ACTION_HINT;
   }
-  schemaAddAttributeBtn.disabled = !schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked');
+  schemaAddAttributeBtn.disabled = !schemaBuilderSelectedPath;
 }
 
 function parentPath(path) {
@@ -1594,8 +1755,72 @@ function childPath(base, key, many = false) {
   return `${prefix}.${key}`;
 }
 
+function indexedChildPath(base, rows) {
+  const indexes = rows
+    .filter((row) => parentPath(row.path) === base)
+    .map((row) => parseSourceBuilderPath(row.path).at(-1))
+    .filter((segment) => segment?.type === 'index')
+    .map((segment) => segment.index);
+  const nextIndex = indexes.length > 0 ? Math.max(...indexes) + 1 : 0;
+  return `${base}[${nextIndex}]`;
+}
+
 function attributePath(base, key) {
   return `${base}@${key}`;
+}
+
+function pathEditableName(path) {
+  const last = parseSourceBuilderPath(path).at(-1);
+  if (last?.type === 'key' || last?.type === 'attr') {
+    return last.key;
+  }
+  if (last?.type === 'index') {
+    return `[${last.index}]`;
+  }
+  return path;
+}
+
+function pathAllowsNameEdit(path) {
+  const last = parseSourceBuilderPath(path).at(-1);
+  return last?.type === 'key' || last?.type === 'attr';
+}
+
+function pathWithEditableName(path, name) {
+  const last = parseSourceBuilderPath(path).at(-1);
+  if (!name || (last?.type !== 'key' && last?.type !== 'attr')) {
+    return path;
+  }
+  const base = parentPath(path);
+  return last.type === 'attr' ? attributePath(base, name) : childPath(base, name);
+}
+
+function hasDuplicatePath(rows, path, currentPath) {
+  return rows.some((row) => row.path === path && row.path !== currentPath);
+}
+
+function setPathControlInvalid(control, invalid, message = '') {
+  if (!control) {
+    return;
+  }
+  if (invalid) {
+    control.setAttribute('aria-invalid', 'true');
+    control.setAttribute('data-invalid', 'true');
+    control.setAttribute('title', message);
+  } else {
+    control.removeAttribute('aria-invalid');
+    control.removeAttribute('data-invalid');
+    control.removeAttribute('title');
+  }
+}
+
+function rebaseChildPath(path, oldBase, newBase) {
+  if (path === oldBase) {
+    return newBase;
+  }
+  if (!isSchemaChildPath(oldBase, path)) {
+    return path;
+  }
+  return `${newBase}${path.slice(oldBase.length)}`;
 }
 
 function addSchemaRule(kind) {
@@ -1637,17 +1862,740 @@ function seedSchemaFromSource() {
 
 function openSchemaBuilder() {
   try {
+    schemaBuilderOpenPaths = new Set();
+    schemaBuilderOpenPathsInitialized = false;
     renderSchemaBuilder(parseSchemaTextOrDefault());
     schemaBuilderModalEl.hidden = false;
   } catch (error) {
     diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
-    setStatus(runStatusEl, 'schema invalid', 'error');
+    setStatus(runStatusEl, 'source invalid', 'error');
     setStatus(diagStatusEl, '1 error', 'error');
   }
 }
 
 function closeSchemaBuilder() {
   schemaBuilderModalEl.hidden = true;
+}
+
+const SOURCE_CONTAINER_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode', 'NodeLiteral']);
+const SOURCE_VALUELESS_CONTAINER_TYPES = new Set(['ObjectNode', 'ListNode', 'TupleNode']);
+const SOURCE_RESERVED_NULL_VALUES = ['none', 'notSet', 'notApplicable', 'tombstone'];
+const SOURCE_DATATYPE_BY_TYPE = {
+  StringLiteral: 'string',
+  NumberLiteral: 'number',
+  IntegerLiteral: 'integer',
+  FloatLiteral: 'float',
+  BooleanLiteral: 'boolean',
+  ToggleLiteral: 'toggle',
+  NullLiteral: 'null',
+  NaNLiteral: 'nan',
+  InfinityLiteral: 'infinity',
+  ObjectNode: 'object',
+  ListNode: 'list',
+  TupleNode: 'tuple',
+  NodeLiteral: 'node',
+  HexLiteral: 'hex',
+  EncodingLiteral: 'encoding',
+  RadixLiteral: 'radix',
+  SeparatorLiteral: 'separator',
+  DateLiteral: 'date',
+  TimeLiteral: 'time',
+  DateTimeLiteral: 'datetime',
+};
+
+const SOURCE_TYPE_BY_VALUE_TYPE = new Map([
+  ['StringLiteral', 'StringLiteral'],
+  ['TrimtickStringLiteral', 'StringLiteral'],
+  ['NumberLiteral', 'NumberLiteral'],
+  ['IntegerLiteral', 'IntegerLiteral'],
+  ['FloatLiteral', 'FloatLiteral'],
+  ['BooleanLiteral', 'BooleanLiteral'],
+  ['ToggleLiteral', 'ToggleLiteral'],
+  ['NullLiteral', 'NullLiteral'],
+  ['NaNLiteral', 'NaNLiteral'],
+  ['InfinityLiteral', 'InfinityLiteral'],
+  ['ObjectNode', 'ObjectNode'],
+  ['ListNode', 'ListNode'],
+  ['TupleLiteral', 'TupleNode'],
+  ['TupleNode', 'TupleNode'],
+  ['NodeLiteral', 'NodeLiteral'],
+  ['HexLiteral', 'HexLiteral'],
+  ['EncodingLiteral', 'EncodingLiteral'],
+  ['RadixLiteral', 'RadixLiteral'],
+  ['SeparatorLiteral', 'SeparatorLiteral'],
+  ['DateLiteral', 'DateLiteral'],
+  ['TimeLiteral', 'TimeLiteral'],
+  ['DateTimeLiteral', 'DateTimeLiteral'],
+  ['ZRUTDateTimeLiteral', 'DateTimeLiteral'],
+]);
+
+let sourceBuilderRows = [];
+let sourceBuilderSelectedPath = null;
+let sourceBuilderOpenPaths = new Set();
+let sourceBuilderOpenPathsInitialized = false;
+
+function sourceTypeOptions(selected) {
+  return SCHEMA_TYPE_OPTIONS
+    .map((type) => `<option value="${type}"${type === selected ? ' selected' : ''}>${type}</option>`)
+    .join('');
+}
+
+function sourceTypeOptionsForRow(row, rows) {
+  const hasChildren = sourceRowHasChildren(row, rows);
+  if (!hasChildren) {
+    return sourceTypeOptions(row.type);
+  }
+  const allowed = row.type === 'ListNode' || row.type === 'TupleNode'
+    ? ['ListNode', 'TupleNode']
+    : [row.type];
+  return allowed
+    .map((type) => `<option value="${type}"${type === row.type ? ' selected' : ''}>${type}</option>`)
+    .join('');
+}
+
+function sourceDatatypeForType(type) {
+  return SOURCE_DATATYPE_BY_TYPE[type] ?? '';
+}
+
+function sourceDefaultValueForType(type) {
+  if (type === 'StringLiteral') return '';
+  if (type === 'NumberLiteral' || type === 'IntegerLiteral') return '0';
+  if (type === 'FloatLiteral') return '0.0';
+  if (type === 'BooleanLiteral') return 'true';
+  if (type === 'ToggleLiteral') return 'on';
+  if (type === 'NullLiteral') return 'none';
+  if (type === 'NaNLiteral') return 'NaN';
+  if (type === 'InfinityLiteral') return 'Infinity';
+  if (type === 'HexLiteral') return '#00';
+  if (type === 'EncodingLiteral') return '';
+  if (type === 'RadixLiteral') return '%0';
+  if (type === 'SeparatorLiteral') return ' ';
+  if (type === 'DateLiteral') return '2026-01-01';
+  if (type === 'TimeLiteral') return '12:00:00';
+  if (type === 'DateTimeLiteral') return '2026-01-01T12:00:00Z';
+  if (type === 'NodeLiteral') return 'node';
+  return '';
+}
+
+function sourceNullUiValue(value) {
+  const raw = String(value?.raw ?? '');
+  const literalValue = String(value?.value ?? raw.replace(/^!/, '') ?? 'none');
+  if (raw.startsWith('!"') || raw.startsWith("!'")) {
+    return `custom:${literalValue}`;
+  }
+  if (SOURCE_RESERVED_NULL_VALUES.includes(literalValue)) {
+    return literalValue;
+  }
+  return literalValue ? `custom:${literalValue}` : 'none';
+}
+
+function sourceTypeForEvent(event) {
+  const datatype = typeof event.datatype === 'string' ? event.datatype : '';
+  return BUILTIN_SCHEMA_TYPES_BY_DATATYPE.get(datatype.toLowerCase())
+    ?? SOURCE_TYPE_BY_VALUE_TYPE.get(event.value?.valueType ?? event.value?.type ?? event.valueType)
+    ?? 'StringLiteral';
+}
+
+function sourceTypeForValue(value) {
+  return SOURCE_TYPE_BY_VALUE_TYPE.get(value?.valueType ?? value?.type) ?? 'StringLiteral';
+}
+
+function sourceUiValueForEvent(event, type) {
+  const value = event.value ?? {};
+  if (type === 'StringLiteral') return value.value ?? value.raw ?? '';
+  if (type === 'BooleanLiteral') return value.value === false ? 'false' : 'true';
+  if (type === 'NullLiteral') return sourceNullUiValue(value);
+  if (type === 'NaNLiteral') return String(value.raw ?? value.value ?? 'NaN');
+  if (type === 'InfinityLiteral') return String(value.raw ?? value.value ?? 'Infinity');
+  if (type === 'NodeLiteral') return value.tag ?? 'node';
+  if (SOURCE_CONTAINER_TYPES.has(type)) return '';
+  return String(value.raw ?? value.value ?? sourceDefaultValueForType(type));
+}
+
+function sourceUiValueForValue(value, type) {
+  if (type === 'StringLiteral') return value?.value ?? value?.raw ?? '';
+  if (type === 'BooleanLiteral') return value?.value === false ? 'false' : 'true';
+  if (type === 'NullLiteral') return sourceNullUiValue(value);
+  if (type === 'NaNLiteral') return String(value?.raw ?? value?.value ?? 'NaN');
+  if (type === 'InfinityLiteral') return String(value?.raw ?? value?.value ?? 'Infinity');
+  if (type === 'NodeLiteral') return value?.tag ?? 'node';
+  if (SOURCE_CONTAINER_TYPES.has(type)) return '';
+  return String(value?.raw ?? value?.value ?? sourceDefaultValueForType(type));
+}
+
+function datatypeName(datatype) {
+  if (typeof datatype === 'string') {
+    return datatype;
+  }
+  return datatype?.name ?? '';
+}
+
+function addSourceAttributeRows(attributes, ownerPath, rows, seen) {
+  for (const attribute of attributes ?? []) {
+    const entries = attribute?.entries instanceof Map
+      ? attribute.entries
+      : new Map(Object.entries(attribute?.entries ?? {}));
+    for (const [key, entry] of entries) {
+      const path = attributePath(ownerPath, key);
+      if (seen.has(path)) {
+        continue;
+      }
+      const type = sourceTypeForValue(entry?.value);
+      rows.push({
+        path,
+        type,
+        datatype: datatypeName(entry?.datatype) || sourceDatatypeForType(type),
+        value: sourceUiValueForValue(entry?.value, type),
+      });
+      seen.add(path);
+      addSourceAttributeRows(entry?.attributes, path, rows, seen);
+      addSourceAttributeRowsFromValue(entry?.value, path, rows, seen);
+    }
+  }
+}
+
+function addSourceAnnotationRows(annotations, ownerPath, rows, seen) {
+  const entries = annotations instanceof Map
+    ? annotations
+    : new Map(Object.entries(annotations ?? {}));
+  for (const [key, entry] of entries) {
+    const path = attributePath(ownerPath, key);
+    if (seen.has(path)) {
+      continue;
+    }
+    const type = sourceTypeForValue(entry?.value);
+    rows.push({
+      path,
+      type,
+      datatype: datatypeName(entry?.datatype) || sourceDatatypeForType(type),
+      value: sourceUiValueForValue(entry?.value, type),
+    });
+    seen.add(path);
+    addSourceAnnotationRows(entry?.annotations, path, rows, seen);
+    addSourceAttributeRows(entry?.attributes, path, rows, seen);
+    addSourceAttributeRowsFromValue(entry?.value, path, rows, seen);
+  }
+}
+
+function addSourceAttributeRowsFromValue(value, path, rows, seen) {
+  addSourceAttributeRows(value?.attributes, path, rows, seen);
+  if (value?.type === 'ObjectNode') {
+    for (const binding of value.bindings ?? []) {
+      const child = childPath(path, binding.key);
+      addSourceAttributeRows(binding.attributes, child, rows, seen);
+      addSourceAttributeRowsFromValue(binding.value, child, rows, seen);
+    }
+  }
+  if (value?.type === 'ListNode' || value?.type === 'TupleNode') {
+    for (const [index, element] of (value.elements ?? []).entries()) {
+      addSourceAttributeRowsFromValue(element, `${path}[${index}]`, rows, seen);
+    }
+  }
+  if (value?.type === 'NodeLiteral') {
+    for (const [index, child] of (value.children ?? []).entries()) {
+      addSourceAttributeRowsFromValue(child, `${path}[${index}]`, rows, seen);
+    }
+  }
+}
+
+function sourceValueControlHtml(row, hasChildren) {
+  const valueDisabled = SOURCE_VALUELESS_CONTAINER_TYPES.has(row.type) || (row.type === 'NodeLiteral' && hasChildren);
+  const disabled = valueDisabled ? ' disabled' : '';
+  const value = escapeHtml(row.value ?? sourceDefaultValueForType(row.type));
+  if (row.type === 'BooleanLiteral') {
+    return `<select data-field="value"${disabled}>
+      <option value="true"${row.value !== 'false' ? ' selected' : ''}>true</option>
+      <option value="false"${row.value === 'false' ? ' selected' : ''}>false</option>
+    </select>`;
+  }
+  if (row.type === 'ToggleLiteral') {
+    return `<select data-field="value"${disabled}>
+      <option value="on"${row.value !== 'off' && row.value !== 'yes' && row.value !== 'no' ? ' selected' : ''}>on</option>
+      <option value="off"${row.value === 'off' ? ' selected' : ''}>off</option>
+      <option value="yes"${row.value === 'yes' ? ' selected' : ''}>yes</option>
+      <option value="no"${row.value === 'no' ? ' selected' : ''}>no</option>
+    </select>`;
+  }
+  if (row.type === 'NullLiteral') {
+    const rawValue = row.value ?? sourceDefaultValueForType(row.type);
+    const isReserved = SOURCE_RESERVED_NULL_VALUES.includes(rawValue);
+    const customValue = rawValue.startsWith('custom:') ? rawValue.slice('custom:'.length) : isReserved ? '' : rawValue;
+    const customDisabled = disabled || isReserved || !rawValue ? ' disabled' : '';
+    return `<select data-field="value"${disabled}>
+      <option value="none"${rawValue === 'none' || !rawValue ? ' selected' : ''}>!none</option>
+      <option value="notSet"${rawValue === 'notSet' ? ' selected' : ''}>!notSet</option>
+      <option value="notApplicable"${rawValue === 'notApplicable' ? ' selected' : ''}>!notApplicable</option>
+      <option value="tombstone"${rawValue === 'tombstone' ? ' selected' : ''}>!tombstone</option>
+      <option value="custom:${escapeHtml(customValue)}"${!isReserved && rawValue ? ' selected' : ''}>custom</option>
+    </select>
+    <input data-field="null-custom" type="text" placeholder="custom null" value="${escapeHtml(customValue)}"${customDisabled} />`;
+  }
+  if (row.type === 'NaNLiteral') {
+    return `<select data-field="value"${disabled}>
+      <option value="NaN"${row.value !== '-NaN' ? ' selected' : ''}>NaN</option>
+      <option value="-NaN"${row.value === '-NaN' ? ' selected' : ''}>-NaN</option>
+    </select>`;
+  }
+  if (row.type === 'InfinityLiteral') {
+    return `<select data-field="value"${disabled}>
+      <option value="Infinity"${row.value !== '-Infinity' ? ' selected' : ''}>Infinity</option>
+      <option value="-Infinity"${row.value === '-Infinity' ? ' selected' : ''}>-Infinity</option>
+    </select>`;
+  }
+  return `<textarea data-field="value" rows="2"${disabled}>${value}</textarea>`;
+}
+
+function sourceTreeItemHtml(row, rows, selectedPath) {
+  const hasChildren = sourceRowHasChildren(row, rows);
+  const isOpen = sourceBuilderOpenPaths.has(row.path);
+  const segments = parseSourceBuilderPath(row.path);
+  const isAttribute = segments.at(-1)?.type === 'attr';
+  const depth = Math.max(0, segments.filter((segment) => segment.type !== 'attr').length - 1) + (isAttribute ? 1 : 0);
+  const selected = row.path === selectedPath;
+  const name = segments.at(-1);
+  const label = isAttribute ? `@${name?.key ?? 'attr'}` : name?.type === 'index' ? `[${name.index}]` : name?.key ?? row.path;
+  const toggle = hasChildren
+    ? `<span class="source-tree-toggle" data-action="toggle" aria-hidden="true">${isOpen ? '▾' : '▸'}</span>`
+    : '<span class="source-tree-toggle" aria-hidden="true"></span>';
+  return `
+    <button class="source-tree-item${selected ? ' is-selected' : ''}" type="button" data-path="${escapeHtml(row.path)}" data-source-type="${escapeHtml(row.type)}" data-source-kind="${isAttribute ? 'attribute' : 'binding'}" aria-expanded="${hasChildren ? String(isOpen) : 'false'}" style="--source-depth: ${Math.min(depth, 6)};">
+      ${toggle}
+      <span class="source-tree-name">${escapeHtml(label)}${hasChildren ? '<small>children</small>' : ''}</span>
+      <span class="source-tree-meta">${escapeHtml(row.datatype || sourceDatatypeForType(row.type))}</span>
+    </button>
+  `;
+}
+
+function sourceDetailHtml(row, rows) {
+  if (!row) {
+    return '<div class="source-empty-detail">Select a binding to edit it.</div>';
+  }
+  const hasChildren = sourceRowHasChildren(row, rows);
+  const isAttribute = parseSourceBuilderPath(row.path).at(-1)?.type === 'attr';
+  const valueLabel = row.type === 'NodeLiteral' ? 'Tag' : 'Value';
+  const projectedDisabled = isAttribute ? ' disabled' : '';
+  const projectedChecked = readIncludePaths().includes(row.path) ? ' checked' : '';
+  return `
+    <div class="source-detail-head">
+      <div>
+        <h3>${escapeHtml(row.path)}</h3>
+        <p><span class="source-detail-type">${isAttribute ? 'Attribute' : escapeHtml(row.type)}</span></p>
+      </div>
+      <button id="source-remove-selected" type="button">Remove</button>
+    </div>
+    <div class="source-detail-grid">
+      <label class="control-field source-detail-path">
+        <span>Key${hasChildren ? '<small>has children</small>' : ''}</span>
+        <input data-source-detail="path" type="text" value="${escapeHtml(pathEditableName(row.path))}" ${pathAllowsNameEdit(row.path) ? '' : 'disabled'} />
+      </label>
+      <label class="control-field">
+        <span>Type</span>
+        <select class="source-type-control" data-source-detail="type">${sourceTypeOptionsForRow(row, rows)}</select>
+      </label>
+      <label class="control-field">
+        <span>Datatype</span>
+        <input class="source-datatype-control" data-source-detail="datatype" type="text" value="${escapeHtml(row.datatype ?? sourceDatatypeForType(row.type))}" />
+      </label>
+      <label class="control-field source-detail-value">
+        <span>${valueLabel}</span>
+        ${sourceValueControlHtml(row, hasChildren).replaceAll('data-field=', 'data-source-detail=')}
+      </label>
+      <label class="inline-toggle source-detail-projection">
+        <input data-source-detail="projected" type="checkbox"${projectedChecked}${projectedDisabled} />
+        <span>Materialize projected</span>
+      </label>
+    </div>
+  `;
+}
+
+function sourceRowsFromSource() {
+  const result = compile(sourceEl.value, {
+    recovery: true,
+    maxSeparatorDepth: readPositiveInt(separatorDepthEl, 8),
+    maxAttributeDepth: readPositiveInt(attributeDepthEl, 1),
+    maxGenericDepth: readPositiveInt(genericDepthEl, 1),
+    ...(validationModeEl.value === 'strict'
+      ? { datatypePolicy: 'reserved_only' }
+      : validationModeEl.value === 'custom'
+        ? { datatypePolicy: 'allow_custom' }
+        : {}),
+  });
+  const rows = [];
+  const seen = new Set();
+  for (const event of result.events ?? []) {
+    const path = formatPath(event.path);
+    if (!path || path === '$' || path.includes('[*]') || path.startsWith('$.["aeon:') || seen.has(path)) {
+      continue;
+    }
+    const type = sourceTypeForEvent(event);
+    const isAnonymousIndexed = parseSourceBuilderPath(path).at(-1)?.type === 'index';
+    rows.push({
+      path,
+      type,
+      datatype: event.datatype ?? (isAnonymousIndexed ? '' : sourceDatatypeForType(type)),
+      value: sourceUiValueForEvent(event, type),
+    });
+    seen.add(path);
+    addSourceAnnotationRows(event.annotations, path, rows, seen);
+    addSourceAttributeRowsFromValue(event.value, path, rows, seen);
+  }
+  if (rows.length > 0) {
+    return rows;
+  }
+  return structuredClone(SAMPLE_SCHEMA.rules).map((rule) => ({
+    path: rule.path,
+    type: rule.constraints?.type ?? 'StringLiteral',
+    datatype: rule.constraints?.datatype ?? sourceDatatypeForType(rule.constraints?.type ?? 'StringLiteral'),
+    value: sourceDefaultValueForType(rule.constraints?.type ?? 'StringLiteral'),
+  }));
+}
+
+function orderSourceRows(rows) {
+  const pathSet = new Set(rows.map((row) => row.path));
+  const visited = new Set();
+  const ordered = [];
+  const childrenByParent = new Map();
+
+  for (const row of rows) {
+    const parent = parentPath(row.path);
+    if (!childrenByParent.has(parent)) {
+      childrenByParent.set(parent, []);
+    }
+    childrenByParent.get(parent).push(row);
+  }
+
+  const append = (row) => {
+    if (!row?.path || visited.has(row.path)) {
+      return;
+    }
+    visited.add(row.path);
+    ordered.push(row);
+    for (const child of childrenByParent.get(row.path) ?? []) {
+      append(child);
+    }
+  };
+
+  for (const row of rows) {
+    const parent = parentPath(row.path);
+    if (parent === '$' || !pathSet.has(parent)) {
+      append(row);
+    }
+  }
+  for (const row of rows) {
+    append(row);
+  }
+
+  return ordered;
+}
+
+function sourceRowIsVisible(row, rows) {
+  let current = parentPath(row.path);
+  while (current && current !== '$') {
+    const parent = rows.find((candidate) => candidate.path === current);
+    if (parent && sourceRowHasChildren(parent, rows) && !sourceBuilderOpenPaths.has(current)) {
+      return false;
+    }
+    current = parentPath(current);
+  }
+  return true;
+}
+
+function visibleSourceRows(rows) {
+  return rows.filter((row) => sourceRowIsVisible(row, rows));
+}
+
+function openSourceAncestors(path) {
+  let current = parentPath(path);
+  while (current && current !== '$') {
+    sourceBuilderOpenPaths.add(current);
+    current = parentPath(current);
+  }
+}
+
+function renderSourceBuilder(rows = sourceRowsFromSource(), selectedPath = null) {
+  sourceBuilderRows = orderSourceRows([...rows]);
+  if (!sourceBuilderOpenPathsInitialized) {
+    for (const row of sourceBuilderRows) {
+      if (sourceRowHasChildren(row, sourceBuilderRows)) {
+        sourceBuilderOpenPaths.add(row.path);
+      }
+    }
+    sourceBuilderOpenPathsInitialized = true;
+  }
+  sourceBuilderSelectedPath = selectedPath && sourceBuilderRows.some((row) => row.path === selectedPath)
+    ? selectedPath
+    : sourceBuilderRows[0]?.path ?? null;
+  sourceRuleListEl.innerHTML = visibleSourceRows(sourceBuilderRows)
+    .map((row) => sourceTreeItemHtml(row, sourceBuilderRows, sourceBuilderSelectedPath))
+    .join('');
+  const selected = sourceBuilderRows.find((row) => row.path === sourceBuilderSelectedPath);
+  sourceDetailEl.innerHTML = sourceDetailHtml(selected, sourceBuilderRows);
+  updateSourceChildActionState();
+  scrollSchemaRuleIntoView(sourceRuleListEl.querySelector('.source-tree-item.is-selected'));
+}
+
+function openSourceBuilder() {
+  try {
+    sourceBuilderOpenPaths = new Set();
+    sourceBuilderOpenPathsInitialized = false;
+    renderSourceBuilder();
+    sourceBuilderModalEl.hidden = false;
+  } catch (error) {
+    diagnosticsEl.textContent = `1. ${error instanceof Error ? error.message : String(error)}`;
+    setStatus(runStatusEl, 'source invalid', 'error');
+    setStatus(diagStatusEl, '1 error', 'error');
+  }
+}
+
+function closeSourceBuilder() {
+  sourceBuilderModalEl.hidden = true;
+}
+
+function readSourceBuilderRows() {
+  syncSelectedSourceDetail();
+  return sourceBuilderRows
+    .map((row) => ({ ...row }))
+    .filter((row) => row.path && row.path !== '$');
+}
+
+function parseSourceBuilderPath(path) {
+  if (!path.startsWith('$.')) {
+    return [];
+  }
+  const segments = [];
+  const pattern = /\.([A-Za-z_][A-Za-z0-9_-]*|"([^"\\]|\\.)*"|'([^'\\]|\\.)*')|\[(\d+)\]|\["((?:[^"\\]|\\.)*)"\]|\['((?:[^'\\]|\\.)*)'\]|@([A-Za-z_][A-Za-z0-9_-]*)/g;
+  let match;
+  while ((match = pattern.exec(path)) !== null) {
+    const token = match[0];
+    if (token.startsWith('.')) {
+      const key = token.slice(1);
+      segments.push({ type: 'key', key: key.startsWith('"') ? JSON.parse(key) : key.startsWith("'") ? key.slice(1, -1) : key });
+    } else if (match[4] !== undefined) {
+      segments.push({ type: 'index', index: Number.parseInt(match[4], 10) });
+    } else if (match[5] !== undefined || match[6] !== undefined) {
+      segments.push({ type: 'key', key: match[5] !== undefined ? JSON.parse(`"${match[5]}"`) : match[6] });
+    } else if (token.startsWith('@')) {
+      segments.push({ type: 'attr', key: match[7] });
+    }
+  }
+  return segments;
+}
+
+function aeonBindingKey(key) {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(key) ? key : JSON.stringify(key);
+}
+
+function sourceRowHasChildren(row, rows) {
+  return SOURCE_CONTAINER_TYPES.has(row.type)
+    && rows.some((candidate) => candidate !== row && parentPath(candidate.path) === row.path && !candidate.path.includes('@'));
+}
+
+function selectedSourceRowPath() {
+  syncSelectedSourceDetail();
+  return sourceBuilderSelectedPath || '$.app';
+}
+
+function selectedSourceRowAllowsChildren() {
+  syncSelectedSourceDetail();
+  const selected = sourceBuilderRows.find((row) => row.path === sourceBuilderSelectedPath);
+  return SOURCE_CONTAINER_TYPES.has(selected?.type)
+    && !parseSourceBuilderPath(selected?.path ?? '').some((segment) => segment.type === 'attr');
+}
+
+function updateSourceChildActionState() {
+  const allowsChildren = selectedSourceRowAllowsChildren();
+  sourceAddChildBtn.disabled = !allowsChildren;
+  sourceAddChildBtn.title = allowsChildren ? '' : CHILD_ACTION_HINT;
+  sourceAddAttributeBtn.disabled = !sourceBuilderSelectedPath;
+}
+
+function syncSelectedSourceDetail() {
+  if (!sourceBuilderSelectedPath) {
+    return;
+  }
+  const index = sourceBuilderRows.findIndex((row) => row.path === sourceBuilderSelectedPath);
+  if (index < 0) {
+    return;
+  }
+  const read = (field) => sourceDetailEl.querySelector(`[data-source-detail="${field}"]`);
+  const currentPath = sourceBuilderRows[index].path;
+  const path = pathWithEditableName(currentPath, read('path')?.value.trim() || pathEditableName(currentPath));
+  if (hasDuplicatePath(sourceBuilderRows, path, currentPath)) {
+    setPathControlInvalid(read('path'), true, 'Duplicate binding name at this level.');
+    return;
+  }
+  setPathControlInvalid(read('path'), false);
+  const type = read('type')?.value || sourceBuilderRows[index].type;
+  let value = read('value')?.value.trim() ?? sourceBuilderRows[index].value;
+  if (type === 'NullLiteral' && value?.startsWith('custom:')) {
+    value = `custom:${read('null-custom')?.value.trim() ?? value.slice('custom:'.length)}`;
+  }
+  const nextRow = {
+    ...sourceBuilderRows[index],
+    path,
+    type,
+    datatype: read('datatype')?.value.trim() ?? sourceBuilderRows[index].datatype,
+    value,
+  };
+  if (path !== currentPath) {
+    sourceBuilderRows = sourceBuilderRows.map((row) => {
+      if (row.path === currentPath) {
+        return nextRow;
+      }
+      return { ...row, path: rebaseChildPath(row.path, currentPath, path) };
+    });
+    const includePaths = readIncludePaths();
+    if (includePaths.some((includePath) => includePath === currentPath || isSchemaChildPath(currentPath, includePath))) {
+      writeIncludePaths(includePaths.map((includePath) => rebaseChildPath(includePath, currentPath, path)));
+    }
+  } else {
+    sourceBuilderRows[index] = nextRow;
+  }
+  sourceBuilderSelectedPath = path;
+}
+
+function selectSourceRow(path) {
+  syncSelectedSourceDetail();
+  sourceBuilderSelectedPath = path;
+  renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+}
+
+function addSourceRow(kind) {
+  syncSelectedSourceDetail();
+  if (kind === 'child' && !selectedSourceRowAllowsChildren()) {
+    updateSourceChildActionState();
+    return;
+  }
+  const selected = selectedSourceRowPath();
+  const selectedIsAttribute = parseSourceBuilderPath(selected).at(-1)?.type === 'attr';
+  const base = kind === 'attribute'
+    ? (selectedIsAttribute ? parentPath(selected) : selected)
+    : kind === 'peer'
+      ? parentPath(selected)
+      : selected;
+  const baseRow = sourceBuilderRows.find((row) => row.path === base);
+  const index = sourceBuilderRows.length + 1;
+  const attrIndex = sourceBuilderRows.filter((row) => parentPath(row.path) === base && parseSourceBuilderPath(row.path).at(-1)?.type === 'attr').length + 1;
+  const path = kind === 'attribute'
+    ? attributePath(base, `attr${attrIndex}`)
+    : baseRow?.type === 'ListNode' || baseRow?.type === 'TupleNode' || baseRow?.type === 'NodeLiteral'
+      ? indexedChildPath(base, sourceBuilderRows)
+      : childPath(base, kind === 'peer' ? `peer${index}` : `child${index}`);
+  sourceBuilderRows.push({
+    path,
+    type: 'StringLiteral',
+    datatype: sourceDatatypeForType('StringLiteral'),
+    value: sourceDefaultValueForType('StringLiteral'),
+  });
+  if (kind === 'child') {
+    sourceBuilderOpenPaths.add(selected);
+    openSourceAncestors(path);
+  } else if (kind === 'attribute') {
+    sourceBuilderOpenPaths.add(base);
+  }
+  renderSourceBuilder(sourceBuilderRows, path);
+}
+
+function removeSelectedSourceRow() {
+  syncSelectedSourceDetail();
+  const selected = sourceBuilderSelectedPath;
+  sourceBuilderRows = sourceBuilderRows.filter((row) => row.path !== selected && !isSchemaChildPath(selected, row.path));
+  sourceBuilderOpenPaths.delete(selected);
+  renderSourceBuilder(sourceBuilderRows, sourceBuilderRows[0]?.path ?? null);
+}
+
+function directChildrenForPath(rows, path) {
+  return rows
+    .filter((row) => row.path !== path && parentPath(row.path) === path && parseSourceBuilderPath(row.path).at(-1)?.type !== 'attr');
+}
+
+function attributeRowsForPath(rows, path) {
+  return rows
+    .filter((row) => row.path.startsWith(`${path}@`) && parentPath(row.path) === path);
+}
+
+function renderSourceAttributes(rows, path) {
+  const attrs = attributeRowsForPath(rows, path);
+  if (attrs.length === 0) {
+    return '';
+  }
+  const body = attrs.map((row) => {
+    const key = parseSourceBuilderPath(row.path).at(-1)?.key ?? 'attr';
+    const datatype = row.datatype ? `:${row.datatype}` : '';
+    return `${aeonBindingKey(key)}${datatype} = ${sourceLiteral(row)}`;
+  }).join(', ');
+  return ` @{${body}}`;
+}
+
+function renderAnonymousSourceHead(row, rows) {
+  const attrs = renderSourceAttributes(rows, row.path).trimStart();
+  const datatype = row.datatype ? `:${row.datatype}` : '';
+  return `${attrs}${datatype}`;
+}
+
+function renderAnonymousSourceValue(row, rows, depth = 0) {
+  const head = renderAnonymousSourceHead(row, rows);
+  const value = renderSourceValue(row, rows, depth);
+  return head ? `${head} = ${value}` : value;
+}
+
+function renderSourceValue(row, rows, depth = 0) {
+  const children = SOURCE_CONTAINER_TYPES.has(row.type) ? directChildrenForPath(rows, row.path) : [];
+  if (children.length === 0) {
+    return sourceLiteral(row);
+  }
+  const indent = '  '.repeat(depth);
+  const childIndent = '  '.repeat(depth + 1);
+  const isArrayLike = row.type === 'ListNode' || row.type === 'TupleNode';
+  if (isArrayLike) {
+    const values = children.map((child) => `${childIndent}${renderAnonymousSourceValue(child, rows, depth + 1)}`);
+    const [open, close] = row.type === 'TupleNode' ? ['(', ')'] : ['[', ']'];
+    return `${open}\n${values.join(',\n')}\n${indent}${close}`;
+  }
+  if (row.type === 'NodeLiteral') {
+    const values = children.map((child) => `${childIndent}${renderAnonymousSourceValue(child, rows, depth + 1)}`);
+    return `<${aeonBindingKey(row.value || 'node')}(\n${values.join('\n')}\n${indent})>`;
+  }
+  const bindings = children.map((child) => renderSourceBinding(child, rows, depth + 1));
+  return `{\n${bindings.join('\n')}\n${indent}}`;
+}
+
+function sourceLiteral(row) {
+  const value = String(row.value ?? sourceDefaultValueForType(row.type));
+  if (row.type === 'StringLiteral') return JSON.stringify(value);
+  if (row.type === 'BooleanLiteral') return value === 'false' ? 'false' : 'true';
+  if (row.type === 'ToggleLiteral') return ['off', 'yes', 'no'].includes(value) ? value : 'on';
+  if (row.type === 'NullLiteral') {
+    if (value.startsWith('custom:')) return `!${JSON.stringify(value.slice('custom:'.length))}`;
+    if (SOURCE_RESERVED_NULL_VALUES.includes(value)) return `!${value}`;
+    return value ? `!${JSON.stringify(value)}` : '!none';
+  }
+  if (row.type === 'NaNLiteral') return value === '-NaN' ? '-NaN' : 'NaN';
+  if (row.type === 'InfinityLiteral') return value === '-Infinity' ? '-Infinity' : 'Infinity';
+  if (row.type === 'EncodingLiteral') return value.startsWith('%') ? value : `%${value}`;
+  if (row.type === 'SeparatorLiteral') return value.startsWith('/') ? value : `/${value || ' '}/`;
+  if (row.type === 'ObjectNode') return '{}';
+  if (row.type === 'ListNode') return '[]';
+  if (row.type === 'TupleNode') return '()';
+  if (row.type === 'NodeLiteral') return `<${aeonBindingKey(value || 'node')}()>`;
+  return value || sourceDefaultValueForType(row.type);
+}
+
+function renderSourceBinding(row, rows, depth = 0) {
+  const segments = parseSourceBuilderPath(row.path);
+  const last = segments.at(-1);
+  const key = last?.type === 'key' ? last.key : `item${last?.index ?? 0}`;
+  const datatype = row.datatype ? `:${row.datatype}` : '';
+  const attrs = renderSourceAttributes(rows, row.path);
+  return `${'  '.repeat(depth)}${aeonBindingKey(key)}${attrs}${datatype} = ${renderSourceValue(row, rows, depth)}`;
+}
+
+function buildSourceFromBuilder() {
+  const rows = orderSourceRows(readSourceBuilderRows());
+  const topLevel = rows
+    .filter((row) => parseSourceBuilderPath(row.path).length === 1 && !parseSourceBuilderPath(row.path).some((segment) => segment.type === 'attr'))
+    .filter((row) => !row.path.includes('@'));
+  return topLevel.map((row) => renderSourceBinding(row, rows)).join('\n\n');
 }
 
 async function applySample(name) {
@@ -1852,55 +2800,153 @@ schemaBuilderApplyBtn.addEventListener('click', () => {
   setStatus(runStatusEl, 'schema updated', 'ok');
   setStatus(diagStatusEl, 'stale', 'warn');
 });
+sourceBuilderOpenBtn.addEventListener('click', openSourceBuilder);
+sourceBuilderCloseBtn.addEventListener('click', closeSourceBuilder);
+sourceBuilderLoadSourceBtn.addEventListener('click', () => {
+  sourceBuilderOpenPaths = new Set();
+  sourceBuilderOpenPathsInitialized = false;
+  renderSourceBuilder();
+});
+sourceBuilderApplyBtn.addEventListener('click', () => {
+  sourceEl.value = buildSourceFromBuilder();
+  syncSourceHighlight();
+  closeSourceBuilder();
+  setStatus(runStatusEl, 'source updated', 'ok');
+  setStatus(diagStatusEl, 'stale', 'warn');
+});
+sourceAddPeerBtn.addEventListener('click', () => addSourceRow('peer'));
+sourceAddChildBtn.addEventListener('click', () => addSourceRow('child'));
+sourceAddAttributeBtn.addEventListener('click', () => addSourceRow('attribute'));
+sourceRuleListEl.addEventListener('click', (event) => {
+  if (!(event.target instanceof HTMLElement)) {
+    return;
+  }
+  const item = event.target.closest('.source-tree-item');
+  if (item instanceof HTMLElement) {
+    if (event.target instanceof HTMLElement && event.target.dataset.action === 'toggle') {
+      const path = item.dataset.path;
+      if (sourceBuilderOpenPaths.has(path)) {
+        sourceBuilderOpenPaths.delete(path);
+        if (sourceBuilderSelectedPath && isSchemaChildPath(path, sourceBuilderSelectedPath)) {
+          sourceBuilderSelectedPath = path;
+        }
+      } else if (path) {
+        sourceBuilderOpenPaths.add(path);
+      }
+      renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+      return;
+    }
+    selectSourceRow(item.dataset.path);
+  }
+});
+sourceDetailEl.addEventListener('change', (event) => {
+  if (!(event.target instanceof HTMLElement)) {
+    return;
+  }
+  if (event.target.id === 'source-remove-selected') {
+    return;
+  }
+  if (event.target.dataset.sourceDetail === 'type') {
+    const type = event.target.value;
+    const datatype = sourceDetailEl.querySelector('[data-source-detail="datatype"]');
+    const value = sourceDetailEl.querySelector('[data-source-detail="value"]');
+    if (datatype instanceof HTMLInputElement) {
+      datatype.value = sourceDatatypeForType(type);
+    }
+    if (value instanceof HTMLInputElement || value instanceof HTMLTextAreaElement || value instanceof HTMLSelectElement) {
+      value.value = sourceDefaultValueForType(type);
+    }
+    syncSelectedSourceDetail();
+    renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+  }
+  if (event.target.dataset.sourceDetail === 'value') {
+    const selected = sourceBuilderRows.find((row) => row.path === sourceBuilderSelectedPath);
+    if (selected?.type === 'NullLiteral') {
+      syncSelectedSourceDetail();
+      renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+    }
+  }
+  if (event.target.dataset.sourceDetail === 'projected') {
+    syncSelectedSourceDetail();
+    setIncludePath(sourceBuilderSelectedPath, event.target.checked);
+    renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+  }
+  updateSourceChildActionState();
+});
+sourceDetailEl.addEventListener('click', (event) => {
+  if (event.target instanceof HTMLElement && event.target.id === 'source-remove-selected') {
+    removeSelectedSourceRow();
+  }
+});
+sourceDetailEl.addEventListener('focusout', (event) => {
+  if (!(event.target instanceof HTMLInputElement) || event.target.dataset.sourceDetail !== 'path') {
+    return;
+  }
+  window.setTimeout(() => {
+    syncSelectedSourceDetail();
+    renderSourceBuilder(sourceBuilderRows, sourceBuilderSelectedPath);
+  }, 0);
+});
 schemaAddPeerBtn.addEventListener('click', () => addSchemaRule('peer'));
 schemaAddChildBtn.addEventListener('click', () => addSchemaRule('child'));
 schemaAddChildManyBtn.addEventListener('click', () => addSchemaRule('child-many'));
 schemaAddAttributeBtn.addEventListener('click', () => addSchemaRule('attribute'));
 schemaSeedSourceBtn.addEventListener('click', seedSchemaFromSource);
-schemaRuleListEl.addEventListener('focusin', (event) => {
+schemaRuleListEl.addEventListener('click', (event) => {
   if (!(event.target instanceof HTMLElement)) {
     return;
   }
-  selectSchemaRuleRow(event.target.closest('.schema-rule'));
+  const item = event.target.closest('.schema-tree-item');
+  if (item instanceof HTMLElement) {
+    if (event.target.dataset.action === 'toggle') {
+      const path = item.dataset.path;
+      if (schemaBuilderOpenPaths.has(path)) {
+        schemaBuilderOpenPaths.delete(path);
+        if (schemaBuilderSelectedPath && isSchemaChildPath(path, schemaBuilderSelectedPath)) {
+          schemaBuilderSelectedPath = path;
+        }
+      } else if (path) {
+        schemaBuilderOpenPaths.add(path);
+      }
+      renderSchemaBuilder(schemaBuilderSchema, schemaBuilderSelectedPath);
+      return;
+    }
+    selectSchemaRulePath(item.dataset.path);
+  }
 });
-schemaRuleListEl.addEventListener('focusout', (event) => {
+schemaDetailEl.addEventListener('change', (event) => {
+  if (event.target instanceof HTMLElement) {
+    updateSchemaConstraintState(schemaDetailEl.querySelector('.schema-rule'));
+  }
+  updateSchemaChildActionState();
+});
+schemaDetailEl.addEventListener('input', (event) => {
+  if (event.target instanceof HTMLElement) {
+    validateSchemaRuleRow(schemaDetailEl.querySelector('.schema-rule'));
+  }
+});
+schemaDetailEl.addEventListener('click', (event) => {
+  if (event.target instanceof HTMLElement && event.target.id === 'schema-remove-selected') {
+    removeSelectedSchemaRule();
+  }
+});
+schemaDetailEl.addEventListener('focusout', (event) => {
   if (!(event.target instanceof HTMLInputElement) || event.target.dataset.field !== 'path') {
     return;
   }
-  const selectedPath = event.target.value.trim() || '$.field';
   window.setTimeout(() => {
-    renderSchemaBuilder(collectSchemaFromBuilder(), selectedPath);
+    syncSelectedSchemaDetail();
+    renderSchemaBuilder(schemaBuilderSchema, schemaBuilderSelectedPath);
   }, 0);
-});
-schemaRuleListEl.addEventListener('click', (event) => {
-  if (!(event.target instanceof HTMLElement) || !event.target.classList.contains('schema-rule-remove')) {
-    if (event.target instanceof HTMLElement) {
-      selectSchemaRuleRow(event.target.closest('.schema-rule'));
-    }
-    updateSchemaChildActionState();
-    return;
-  }
-  const row = event.target.closest('.schema-rule');
-  row?.remove();
-  if (!schemaRuleListEl.querySelector('.schema-rule input[type="radio"]:checked')) {
-    schemaRuleListEl.querySelector('.schema-rule input[type="radio"]')?.click();
-  }
-  updateSchemaChildActionState();
-});
-schemaRuleListEl.addEventListener('change', (event) => {
-  if (event.target instanceof HTMLElement) {
-    updateSchemaConstraintState(event.target.closest('.schema-rule'));
-  }
-  updateSchemaChildActionState();
-});
-schemaRuleListEl.addEventListener('input', (event) => {
-  if (event.target instanceof HTMLElement) {
-    validateSchemaRuleRow(event.target.closest('.schema-rule'));
-  }
 });
 schemaBuilderModalEl.addEventListener('click', (event) => {
   if (event.target === schemaBuilderModalEl) {
     closeSchemaBuilder();
+  }
+});
+sourceBuilderModalEl.addEventListener('click', (event) => {
+  if (event.target === sourceBuilderModalEl) {
+    closeSourceBuilder();
   }
 });
 menuToggleBtn.addEventListener('click', (event) => {
