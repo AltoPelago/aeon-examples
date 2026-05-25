@@ -110,21 +110,24 @@ export function schemaToAeon(schema) {
     '  id:string = "playground.schema"',
     '  version:string = "1"',
     `  world:string = ${aeonString(normalized.world)}`,
-    '  rules:object = {',
+    '  rules:list<object> = [',
   ];
 
   for (const rule of normalized.rules) {
-    lines.push(`    ${aeonKey(rule.path)}:object = {`);
+    lines.push('    {');
+    lines.push(`      path:string = ${aeonString(rule.path)}`);
+    lines.push('      constraints:object = {');
     for (const [key, value] of Object.entries(rule.constraints)) {
       if (value === undefined || value === null || value === '') {
         continue;
       }
-      lines.push(constraintToAeon(key, value, '      '));
+      lines.push(constraintToAeon(key, value, '        '));
     }
+    lines.push('      }');
     lines.push('    }');
   }
 
-  lines.push('  }');
+  lines.push('  ]');
   lines.push('}');
   return lines.join('\n');
 }
