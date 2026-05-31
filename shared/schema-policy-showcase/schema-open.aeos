@@ -26,8 +26,7 @@ aeos:schema = {
 
     "$.app.region" = {
       required = true
-      reference = "require"
-      reference_kind = "clone"
+      reference = "allow"
       reference_target_path = "$.regions[*]"
       type = "StringLiteral"
       min_length = 3

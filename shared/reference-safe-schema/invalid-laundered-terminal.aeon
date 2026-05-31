@@ -4,8 +4,8 @@ aeon:header = {
   schema = "altopelago.reference-safe-schema.v1"
 }
 
-postcodes = [~ages[0]]
 ages = [42]
+postcodes = [~ages[0]]
 
 person = {
   postcode = ~postcodes[0]

@@ -6,8 +6,7 @@
       "path": "$.person.postcode",
       "constraints": {
         "required": true,
-        "reference": "require",
-        "reference_kind": "clone",
+        "reference": "allow",
         "reference_target_pattern": "^\\$\\.postcodes\\[\\d+\\]$",
         "type": "IntegerLiteral",
         "min_value": "1000",
@@ -19,8 +18,7 @@
       "path": "$.person.age",
       "constraints": {
         "required": true,
-        "reference": "require",
-        "reference_kind": "clone",
+        "reference": "allow",
         "reference_target_pattern": "^\\$\\.ages\\[\\d+\\]$",
         "type": "IntegerLiteral",
         "min_value": "0",

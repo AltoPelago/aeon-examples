@@ -7,8 +7,8 @@ Focused shared example for the new AEOS reference hardening surface:
 
 The example keeps the document small on purpose so the boundary is easy to see:
 
-- `person.postcode` is only allowed to point into `postcodes[...]`
-- `person.age` is only allowed to point into `ages[...]`
+- when `person.postcode` is a reference, it may only point into `postcodes[...]`
+- when `person.age` is a reference, it may only point into `ages[...]`
 - both fields validate the terminal literal form reached by the reference chain
 
 ## Files
@@ -69,8 +69,7 @@ The runtime rule for `$.person.postcode` is:
 {
   "path": "$.person.postcode",
   "constraints": {
-    "reference": "require",
-    "reference_kind": "clone",
+    "reference": "allow",
     "reference_target_pattern": "^\\$\\.postcodes\\[\\d+\\]$",
     "type": "IntegerLiteral",
     "min_value": "1000",
@@ -82,8 +81,8 @@ The runtime rule for `$.person.postcode` is:
 
 That means:
 
-- the value at `$.person.postcode` must still be a clone reference
-- the declared target must stay inside `$.postcodes[...]`
+- references are allowed at `$.person.postcode`
+- when the value is a reference, the declared target must stay inside `$.postcodes[...]`
 - the terminal literal must still be a 4-digit postcode in the configured range
 
 ## Expected outcomes

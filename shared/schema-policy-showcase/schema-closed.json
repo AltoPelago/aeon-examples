@@ -33,8 +33,7 @@
       "path": "$.app.region",
       "constraints": {
         "required": true,
-        "reference": "require",
-        "reference_kind": "clone",
+        "reference": "allow",
         "reference_target_pattern": "^\\$\\.regions\\[\\d+\\]$",
         "type": "StringLiteral",
         "min_length": 3,

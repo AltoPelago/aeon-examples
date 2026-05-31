@@ -3,8 +3,8 @@
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
 The examples are configured for registry package versions rather than
-sibling-repo local-path dependencies. Publishing those packages is the remaining
-blocker before fresh installs can succeed from public registries.
+sibling-repo local-path dependencies, so fresh installs exercise the public
+package surface.
 
 - `typescript/`
 - `python/`

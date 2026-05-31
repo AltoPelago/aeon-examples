@@ -18,7 +18,7 @@ so you can see how the same assignment stream behaves under different contracts.
 - `schema-closed.aeos`
   closed-world contract; this one should fail on an extra field
 - `schema-no-references.aeos`
-  forbids references; this one should fail because the document uses a clone reference
+  forbids references; this one should fail because the document uses a reference
 - `schema-literal-region.aeos`
   requires a direct string literal at `$.app.region`; this one should fail because the document keeps `region` as a reference
 - `schema-*.json`
@@ -74,7 +74,7 @@ and so on.
 - `schema-no-references.aeos`
   should fail with `reference_forbidden`
 - `schema-literal-region.aeos`
-  should fail with `type_mismatch` because `$.app.region` is still a clone reference at the stream level
+  should fail with `type_mismatch` because `$.app.region` is still a reference at the stream level
 
 ## Authoring note
 

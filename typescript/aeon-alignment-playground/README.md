@@ -31,7 +31,7 @@ npm install --ignore-scripts
 
 This example is wired to public `@altopelago/aeon-*` package names. It should be installed
 after the `@altopelago/aeon-annotation-stream`, `@altopelago/aeon-canonical`, `@altopelago/aeon-core`,
-`@altopelago/aeon-finalize`, and `@altopelago/aeon-wasm` packages are published at `0.9.2` or newer.
+`@altopelago/aeon-finalize`, and `@altopelago/aeon-wasm` packages are published at `0.9.3` or newer.
 Before installing from npm, verify that none of the direct or transitive
 packages were published or updated in the last 7 days. This example also ships
 an `.npmrc` with `ignore-scripts=true` so dependency lifecycle scripts do not run
