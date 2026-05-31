@@ -3,9 +3,12 @@ aeon:header = {
 }
 
 sun:farewell = {
-  version:ver[.] = ^1.1.0
+  version:ver[.] = ^1.2.0
   daytime:string = "Hello, Sun"
   farewell:string = "Sayonara, Sun"
+  sleepTight:string = "Sleep tight, Sun"
   sunsetHour:number = 18
   cooldownHours:number = 3
+  sleepHour:number = 21
+  wakeHour:number = 7
 }

@@ -7,38 +7,38 @@ aeon:header = {
 }
 contacts:contactList = [
   {
-    firstName:string = "Nina"
-    lastName:string = "Parker"
-    email:string = "nina.parker75@example.com"
-    phone:string = "+4465046408"
-    countryCode:string = "GB"
-  }
-  {
-    firstName:string = "Zoe"
+    firstName:string = "Ruby"
     lastName:string = "Nguyen"
-    email:string = "zoe.nguyen17@example.com"
-    phone:string = "+6172883948"
-    countryCode:string = "AU"
-  }
-  {
-    firstName:string = "Mia"
-    lastName:string = "Hughes"
-    email:string = "mia.hughes51@example.com"
-    phone:string = "+183394236"
+    email:string = "ruby.nguyen52@example.com"
+    phone:string = "+114664035"
     countryCode:string = "US"
   }
   {
-    firstName:string = "Ruby"
-    lastName:string = "Lopez"
-    email:string = "ruby.lopez55@example.com"
-    phone:string = "+4426359916"
-    countryCode:string = "GB"
+    firstName:string = "Kai"
+    lastName:string = "Parker"
+    email:string = "kai.parker75@example.com"
+    phone:string = "+180008260"
+    countryCode:string = "US"
   }
   {
-    firstName:string = "Ethan"
-    lastName:string = "Nguyen"
-    email:string = "ethan.nguyen95@example.com"
-    phone:string = "+6116966551"
-    countryCode:string = "AU"
+    firstName:string = "Lucas"
+    lastName:string = "Wright"
+    email:string = "lucas.wright53@example.com"
+    phone:string = "+189568485"
+    countryCode:string = "US"
+  }
+  {
+    firstName:string = "Ava"
+    lastName:string = "Wright"
+    email:string = "ava.wright35@example.com"
+    phone:string = "+6493053547"
+    countryCode:string = "NZ"
+  }
+  {
+    firstName:string = "Liam"
+    lastName:string = "Singh"
+    email:string = "liam.singh92@example.com"
+    phone:string = "+156542221"
+    countryCode:string = "CA"
   }
 ]

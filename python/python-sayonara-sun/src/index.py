@@ -17,6 +17,7 @@ def main() -> None:
         print(f"AEON configuration loaded correctly (v{farewell.version})")
         print(f"Current local time: {now.strftime('%H:%M:%S')}")
         print(f"Sunset window: {farewell.get_sunset_window()}")
+        print(f"Sleep window: {farewell.get_sleep_window()}")
         print("---")
         print(farewell.get_message(current_hour))
     except AeonLoadError as error:

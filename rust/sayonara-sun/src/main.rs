@@ -18,8 +18,11 @@ struct Farewell {
     version: String,
     daytime: String,
     farewell: String,
+    sleep_tight: String,
     sunset_hour: i64,
     cooldown_hours: i64,
+    sleep_hour: i64,
+    wake_hour: i64,
 }
 
 impl Farewell {
@@ -32,9 +35,25 @@ impl Farewell {
         format!("{:02}:00-{:02}:00", self.sunset_hour, end_hour)
     }
 
+    fn sleep_window(&self) -> String {
+        format!("{:02}:00-{:02}:00", self.sleep_hour, self.wake_hour)
+    }
+
+    fn hour_in_window(&self, current_hour: i64, start_hour: i64, end_hour: i64) -> bool {
+        if start_hour == end_hour {
+            return true;
+        }
+        if start_hour < end_hour {
+            return start_hour <= current_hour && current_hour < end_hour;
+        }
+        start_hour <= current_hour || current_hour < end_hour
+    }
+
     fn message_for_hour(&self, current_hour: i64) -> &str {
-        let window_end = self.sunset_hour + self.cooldown_hours;
-        if self.sunset_hour <= current_hour && current_hour < window_end {
+        let sunset_end = (self.sunset_hour + self.cooldown_hours) % 24;
+        if self.hour_in_window(current_hour, self.sleep_hour, self.wake_hour) {
+            &self.sleep_tight
+        } else if self.hour_in_window(current_hour, self.sunset_hour, sunset_end) {
             &self.farewell
         } else {
             &self.daytime
@@ -67,6 +86,7 @@ fn main() {
     );
     println!("Current example hour: {current_hour:02}:00");
     println!("Sunset window: {}", loaded.document.sun.sunset_window());
+    println!("Sleep window: {}", loaded.document.sun.sleep_window());
     println!("---");
     println!("{}", loaded.document.sun.message_for_hour(current_hour));
 }
@@ -92,6 +112,10 @@ fn build_schema() -> Schema {
                 json!({"required": true, "type": "StringLiteral"}),
             ),
             rule(
+                "$.sun.sleepTight",
+                json!({"required": true, "type": "StringLiteral"}),
+            ),
+            rule(
                 "$.sun.sunsetHour",
                 json!({
                     "required": true,
@@ -103,6 +127,26 @@ fn build_schema() -> Schema {
             ),
             rule(
                 "$.sun.cooldownHours",
+                json!({
+                    "required": true,
+                    "type": "NumberLiteral",
+                    "sign": "unsigned",
+                    "min_digits": 1,
+                    "max_digits": 1
+                }),
+            ),
+            rule(
+                "$.sun.sleepHour",
+                json!({
+                    "required": true,
+                    "type": "NumberLiteral",
+                    "sign": "unsigned",
+                    "min_digits": 1,
+                    "max_digits": 2
+                }),
+            ),
+            rule(
+                "$.sun.wakeHour",
                 json!({
                     "required": true,
                     "type": "NumberLiteral",
@@ -136,6 +180,18 @@ fn require_business_rules(farewell: &Farewell) {
         panic!(
             "$.sun.cooldownHours must be between 1 and 6. Got: {}",
             farewell.cooldown_hours
+        );
+    }
+    if !(21..=23).contains(&farewell.sleep_hour) {
+        panic!(
+            "$.sun.sleepHour must be between 21 and 23. Got: {}",
+            farewell.sleep_hour
+        );
+    }
+    if !(1..=7).contains(&farewell.wake_hour) {
+        panic!(
+            "$.sun.wakeHour must be between 1 and 7. Got: {}",
+            farewell.wake_hour
         );
     }
 }

@@ -21,6 +21,7 @@ export function loadConfig(filePath: string): Farewell {
       { path: '$.sun.version', constraints: { required: true, type: 'SeparatorLiteral' } },
       { path: '$.sun.daytime', constraints: { required: true, type: 'StringLiteral' } },
       { path: '$.sun.farewell', constraints: { required: true, type: 'StringLiteral' } },
+      { path: '$.sun.sleepTight', constraints: { required: true, type: 'StringLiteral' } },
       {
         path: '$.sun.sunsetHour',
         constraints: { required: true, type: 'IntegerLiteral', sign: 'unsigned', min_digits: 1, max_digits: 2 } as const,
@@ -29,11 +30,21 @@ export function loadConfig(filePath: string): Farewell {
         path: '$.sun.cooldownHours',
         constraints: { required: true, type: 'IntegerLiteral', sign: 'unsigned', min_digits: 1, max_digits: 1 } as const,
       },
+      {
+        path: '$.sun.sleepHour',
+        constraints: { required: true, type: 'IntegerLiteral', sign: 'unsigned', min_digits: 1, max_digits: 2 } as const,
+      },
+      {
+        path: '$.sun.wakeHour',
+        constraints: { required: true, type: 'IntegerLiteral', sign: 'unsigned', min_digits: 1, max_digits: 1 } as const,
+      },
     ],
   });
 
   requireUnsignedIntegerRange(document, '$.sun.sunsetHour', 16, 21);
   requireUnsignedIntegerRange(document, '$.sun.cooldownHours', 1, 6);
+  requireUnsignedIntegerRange(document, '$.sun.sleepHour', 21, 23);
+  requireUnsignedIntegerRange(document, '$.sun.wakeHour', 1, 7);
 
   requireNoFinalizeErrors(document);
 

@@ -31,6 +31,13 @@
       }
     },
     {
+      "path": "$.sun.sleepTight",
+      "constraints": {
+        "required": true,
+        "type": "StringLiteral"
+      }
+    },
+    {
       "path": "$.sun.sunsetHour",
       "constraints": {
         "required": true,
@@ -42,6 +49,26 @@
     },
     {
       "path": "$.sun.cooldownHours",
+      "constraints": {
+        "required": true,
+        "type": "IntegerLiteral",
+        "sign": "unsigned",
+        "min_digits": 1,
+        "max_digits": 1
+      }
+    },
+    {
+      "path": "$.sun.sleepHour",
+      "constraints": {
+        "required": true,
+        "type": "IntegerLiteral",
+        "sign": "unsigned",
+        "min_digits": 1,
+        "max_digits": 2
+      }
+    },
+    {
+      "path": "$.sun.wakeHour",
       "constraints": {
         "required": true,
         "type": "IntegerLiteral",

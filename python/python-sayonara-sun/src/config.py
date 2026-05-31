@@ -21,6 +21,8 @@ def load_config(file_path: str | Path) -> Farewell:
     require_datatype(document, "$.sun", "farewell")
     require_unsigned_integer_range(document, "$.sun.sunsetHour", 16, 21)
     require_unsigned_integer_range(document, "$.sun.cooldownHours", 1, 6)
+    require_unsigned_integer_range(document, "$.sun.sleepHour", 21, 23)
+    require_unsigned_integer_range(document, "$.sun.wakeHour", 1, 7)
 
     return map_farewell(document)
 
@@ -32,12 +34,21 @@ def build_schema() -> dict[str, object]:
             {"path": "$.sun.version", "constraints": {"required": True, "type": "SeparatorLiteral"}},
             {"path": "$.sun.daytime", "constraints": {"required": True, "type": "StringLiteral"}},
             {"path": "$.sun.farewell", "constraints": {"required": True, "type": "StringLiteral"}},
+            {"path": "$.sun.sleepTight", "constraints": {"required": True, "type": "StringLiteral"}},
             {
                 "path": "$.sun.sunsetHour",
                 "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
             },
             {
                 "path": "$.sun.cooldownHours",
+                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
+            },
+            {
+                "path": "$.sun.sleepHour",
+                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
+            },
+            {
+                "path": "$.sun.wakeHour",
                 "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
             },
         ]
@@ -49,8 +60,11 @@ def map_farewell(document: LoadedDocument) -> Farewell:
         version=read_separator_literal(document, "$.sun.version"),
         daytime=read_string_literal(document, "$.sun.daytime"),
         farewell=read_string_literal(document, "$.sun.farewell"),
+        sleep_tight=read_string_literal(document, "$.sun.sleepTight"),
         sunset_hour=read_integer_literal(document, "$.sun.sunsetHour"),
         cooldown_hours=read_integer_literal(document, "$.sun.cooldownHours"),
+        sleep_hour=read_integer_literal(document, "$.sun.sleepHour"),
+        wake_hour=read_integer_literal(document, "$.sun.wakeHour"),
     )
 
 

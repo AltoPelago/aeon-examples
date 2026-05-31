@@ -9,6 +9,7 @@ try {
   console.log(`AEON configuration loaded correctly (v${farewell.version})`);
   console.log(`Current local time: ${now.toLocaleTimeString()}`);
   console.log(`Sunset window: ${farewell.getSunsetWindow()}`);
+  console.log(`Sleep window: ${farewell.getSleepWindow()}`);
   console.log('---');
   console.log(farewell.getMessage(currentHour));
 } catch (error) {

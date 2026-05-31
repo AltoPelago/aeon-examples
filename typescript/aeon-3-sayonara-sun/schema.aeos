@@ -23,6 +23,11 @@ aeos:schema = {
       type = "StringLiteral"
     }
 
+    "$.sun.sleepTight" = {
+      required = true
+      type = "StringLiteral"
+    }
+
     "$.sun.sunsetHour" = {
       required = true
       type = "IntegerLiteral"
@@ -32,6 +37,22 @@ aeos:schema = {
     }
 
     "$.sun.cooldownHours" = {
+      required = true
+      type = "IntegerLiteral"
+      sign = "unsigned"
+      min_digits = 1
+      max_digits = 1
+    }
+
+    "$.sun.sleepHour" = {
+      required = true
+      type = "IntegerLiteral"
+      sign = "unsigned"
+      min_digits = 1
+      max_digits = 2
+    }
+
+    "$.sun.wakeHour" = {
       required = true
       type = "IntegerLiteral"
       sign = "unsigned"
