@@ -23,34 +23,34 @@ language.
 
 | Example | What it demonstrates |
 | --- | --- |
-| [`typescript/aeon-1-hello-world`](./typescript/aeon-1-hello-world/) | Minimal AEON file loading with best-practice two-stage validation: check the assignment stream, finalize, then print trusted application data. |
-| [`typescript/aeon-2-goodnight-moon`](./typescript/aeon-2-goodnight-moon/) | A deeper config example with nested objects, custom datatypes, separator-literal validation, business rules, and time-based application logic. |
-| [`typescript/aeon-3-sayonara-sun`](./typescript/aeon-3-sayonara-sun/) | A reusable config-loading pattern that keeps compile, schema validation, business checks, and finalization explicit while reducing boilerplate. |
-| [`typescript/validating-a-contact-list`](./typescript/validating-a-contact-list/) | Contact-list ingestion with strict validation, AEOS schema artifacts, assignment-stream checks, sample data generation, and mapping into typed application objects. |
-| [`typescript/aeon-web-todo`](./typescript/aeon-web-todo/) | A Svelte + Vite browser app that imports todo lists from AEON, autosaves a browser draft, and exports the current list back to AEON. |
-| [`typescript/aeon-alignment-playground`](./typescript/aeon-alignment-playground/) | Browser playground for comparing TypeScript and Rust WASM processing, including canonical output, finalized JSON, annotations, diagnostics, and schema checks. |
+| [Hello World](./typescript/aeon-1-hello-world/) | Minimal AEON file loading with best-practice two-stage validation: check the assignment stream, finalize, then print trusted application data. |
+| [Goodnight Moon](./typescript/aeon-2-goodnight-moon/) | A deeper config example with nested objects, custom datatypes, separator-literal validation, business rules, and time-based application logic. |
+| [Sayonara Sun](./typescript/aeon-3-sayonara-sun/) | A reusable config-loading pattern that keeps compile, schema validation, business checks, and finalization explicit while reducing boilerplate. |
+| [Validating a Contact List](./typescript/validating-a-contact-list/) | Contact-list ingestion with strict validation, AEOS schema artifacts, assignment-stream checks, sample data generation, and mapping into typed application objects. |
+| [AEON Todo Web App](./typescript/aeon-web-todo/) | A Svelte + Vite browser app that imports todo lists from AEON, autosaves a browser draft, and exports the current list back to AEON. |
+| [AEON Alignment Playground](./typescript/aeon-alignment-playground/) | Browser playground for comparing TypeScript and Rust WASM processing, including canonical output, finalized JSON, annotations, diagnostics, and schema checks. |
 
 ### Python
 
 | Example | What it demonstrates |
 | --- | --- |
-| [`python/python-hello-world`](./python/python-hello-world/) | The smallest Python starting point: load `hello.aeon`, read one value, and compare minimal, commented, and finalized-document styles. |
-| [`python/python-sayonara-sun`](./python/python-sayonara-sun/) | Python counterpart to the staged Sayonara Sun flow: high-level loading, schema validation, business checks, and mapping into a small model. |
+| [Hello World](./python/python-hello-world/) | The smallest Python starting point: load `hello.aeon`, read one value, and compare minimal, commented, and finalized-document styles. |
+| [Sayonara Sun](./python/python-sayonara-sun/) | Python counterpart to the staged Sayonara Sun flow: high-level loading, schema validation, business checks, and mapping into a small model. |
 
 ### Rust
 
 | Example | What it demonstrates |
 | --- | --- |
-| [`rust/hello-world`](./rust/hello-world/) | Minimal Rust loading into a typed struct using the Rust library surface directly. |
-| [`rust/sayonara-sun`](./rust/sayonara-sun/) | Richer Rust config loading with AEOS validation, business checks, and message rendering from trusted data. |
+| [Hello World](./rust/hello-world/) | Minimal Rust loading into a typed struct using the Rust library surface directly. |
+| [Sayonara Sun](./rust/sayonara-sun/) | Richer Rust config loading with AEOS validation, business checks, and message rendering from trusted data. |
 
 ### Shared
 
 | Example | What it demonstrates |
 | --- | --- |
-| [`shared/contracts-baseline`](./shared/contracts-baseline/) | Contract registry resolution for `aeon:profile` and `aeon:schema`, including trusted artifact hash verification before load. |
-| [`shared/reference-safe-schema`](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_path` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
-| [`shared/schema-policy-showcase`](./shared/schema-policy-showcase/) | Comparative schema behavior: open vs closed world, reference allowed vs forbidden, and direct-literal requirements over the same AEON document. |
+| [Contracts Baseline](./shared/contracts-baseline/) | Contract registry resolution for `aeon:profile` and `aeon:schema`, including trusted artifact hash verification before load. |
+| [Reference-Safe Schema](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_path` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
+| [Schema Policy Showcase](./shared/schema-policy-showcase/) | Comparative schema behavior: open vs closed world, reference allowed vs forbidden, and direct-literal requirements over the same AEON document. |
 
 ## Repository Hygiene
 
