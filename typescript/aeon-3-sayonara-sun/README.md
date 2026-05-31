@@ -44,7 +44,6 @@ The result is that `src/config.ts` still reads in phase order, but the boilerpla
 ```bash
 cd typescript/aeon-3-sayonara-sun
 npm install --ignore-scripts
-npm run build
 npm start
 ```
 

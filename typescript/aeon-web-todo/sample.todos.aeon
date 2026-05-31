@@ -1,6 +1,6 @@
 aeon:header = {
   encoding:string = "utf-8"
-  mode:string = "loose"
+  mode:string = "transport"
   profile:string = "aeon.gp.profile.v1"
   version = "1"
 }

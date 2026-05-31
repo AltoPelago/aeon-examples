@@ -62,7 +62,7 @@
   {
     "name": "clone-materialization",
     "source": "source = {\n  value = 7\n}\ncopy = ~source\n",
-    "validationMode": "loose",
+    "validationMode": "transport",
     "canonicalContains": ["copy = ~source"],
     "errorCodes": [],
     "warningCodes": [],
@@ -70,9 +70,9 @@
     "eventTypes": ["ObjectNode", "NumberLiteral", "CloneReference"]
   },
   {
-    "name": "loose-infinity-warning",
+    "name": "transport-infinity-warning",
     "source": "top:infinity = Infinity\n",
-    "validationMode": "loose",
+    "validationMode": "transport",
     "canonicalContains": ["top:infinity = Infinity"],
     "errorCodes": [],
     "warningCodes": ["FINALIZE_JSON_PROFILE_INFINITY"],

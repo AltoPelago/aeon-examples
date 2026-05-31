@@ -55,8 +55,8 @@ const SAMPLE_PRESETS = {
       schemaText: schemaToAeon(SAMPLE_SCHEMA),
     },
   },
-  loose: {
-    source: `//# Loose validation sample
+  transport: {
+    source: `//# Transport validation sample
 aeon:header = {
   mode:string = "transport"
   encoding:string = "utf-8"
@@ -65,13 +65,13 @@ aeon:header = {
 }
 
 app = {
-  name = "loose playground"
+  name = "transport playground"
   enabled = on
   port = 8080
   retries = 3
 }`,
     settings: {
-      validationMode: 'loose',
+      validationMode: 'transport',
       separatorDepth: '8',
       attributeDepth: '1',
       genericDepth: '1',
@@ -773,7 +773,7 @@ function applyValidationMode(source, mode) {
     return source;
   }
 
-  const compileMode = mode === 'loose' ? 'transport' : mode;
+  const compileMode = mode === 'transport' ? 'transport' : mode;
   const trivia = String.raw`(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*`;
   const structuredHeaderRe = new RegExp(`(aeon${trivia}:${trivia}header${trivia}=${trivia}\\{)([\\s\\S]*?)(\\n\\})`, 'm');
   const shorthandModeRe = new RegExp(`aeon${trivia}:${trivia}mode${trivia}=${trivia}"[^"]*"`, 'm');
@@ -799,7 +799,7 @@ function describeValidationSource(mode) {
   if (mode === 'none') {
     return 'raw input';
   }
-  if (mode === 'loose') {
+  if (mode === 'transport') {
     return 'validation-adjusted input (mode forced to transport)';
   }
   if (mode === 'strict') {

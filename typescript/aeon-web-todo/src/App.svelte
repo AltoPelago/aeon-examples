@@ -60,7 +60,7 @@
         includeHeader: true,
         header: {
           encoding: 'utf-8',
-          mode: 'loose',
+          mode: 'transport',
           profile: 'aeon.gp.profile.v1',
           version: 1,
         },

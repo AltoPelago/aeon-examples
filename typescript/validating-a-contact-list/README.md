@@ -47,7 +47,7 @@ npm run read-contacts-assignment -- ./data/contacts.aeon
 ```aeon
 aeon:header = {
   encoding:string = "utf-8"
-  mode:string = "loose"
+  mode:string = "transport"
   version = "1"
   profile = "aeon.gp.profile.v1"
   schema = "altopelago.contact-list.schema.v1"

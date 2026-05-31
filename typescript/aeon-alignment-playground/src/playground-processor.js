@@ -404,7 +404,7 @@ function applyValidationMode(source, mode) {
     return source;
   }
 
-  const compileMode = mode === 'loose' ? 'transport' : mode;
+  const compileMode = mode === 'transport' ? 'transport' : mode;
   const trivia = String.raw`(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*`;
   const structuredHeaderRe = new RegExp(`(aeon${trivia}:${trivia}header${trivia}=${trivia}\\{)([\\s\\S]*?)(\\n\\})`, 'm');
   const shorthandModeRe = new RegExp(`aeon${trivia}:${trivia}mode${trivia}=${trivia}"[^"]*"`, 'm');
@@ -519,7 +519,7 @@ export async function processWithTypeScriptCore(source, options) {
   }
 
   const finalized = finalizeJson(compileResult.events, {
-    mode: options.validationMode === 'loose' ? 'loose' : 'strict',
+    mode: options.validationMode === 'transport' ? 'loose' : 'strict',
     scope: options.finalizeScope,
     ...(compileResult.header
       ? {

@@ -255,7 +255,7 @@ test('typescript playground validates nullable, null value, numeric widening, an
   const passing = await processWithTypeScriptCore(
     'app:o = {\n  name:null = !none\n  score:infinity = Infinity\n  sample:nan = NaN\n}\n',
     {
-      ...buildOptions('loose'),
+      ...buildOptions('transport'),
       schemaEnabled: true,
       schemaText: JSON.stringify({
         world: 'open',
@@ -273,7 +273,7 @@ test('typescript playground validates nullable, null value, numeric widening, an
   const failing = await processWithTypeScriptCore(
     'app:o = {\n  name:null = !notApplicable\n  score:infinity = Infinity\n}\n',
     {
-      ...buildOptions('loose'),
+      ...buildOptions('transport'),
       schemaEnabled: true,
       schemaText: JSON.stringify({
         world: 'open',

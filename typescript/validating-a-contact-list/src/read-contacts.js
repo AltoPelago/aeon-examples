@@ -84,7 +84,7 @@ async function main() {
   const root = asRecord(document, 'root');
   expectKeys(root, ['aeon:encoding', 'aeon:mode', 'aeon:profile', 'aeon:schema', 'aeon:version', 'contacts'], 'root');
   if (root['aeon:encoding'] !== 'utf-8') fail('root.aeon:encoding must be utf-8');
-  if (root['aeon:mode'] !== 'loose') fail('root.aeon:mode must be loose');
+  if (root['aeon:mode'] !== 'transport') fail('root.aeon:mode must be transport');
   if (root['aeon:version'] !== '1') fail('root.aeon:version must be 1');
   if (root['aeon:profile'] !== 'aeon.gp.profile.v1') fail('root.aeon:profile must be aeon.gp.profile.v1');
   if (root['aeon:schema'] !== 'altopelago.contact-list.schema.v1') fail('root.aeon:schema must be altopelago.contact-list.schema.v1');
