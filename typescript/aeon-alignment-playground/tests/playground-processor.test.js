@@ -19,7 +19,11 @@ const PACKAGE_WASM_ARTIFACT = resolve(
   '../pkg/aeon_wasm_bg.wasm',
 );
 
-const WASM_ARTIFACT = existsSync(LOCAL_WASM_ARTIFACT) ? LOCAL_WASM_ARTIFACT : PACKAGE_WASM_ARTIFACT;
+const PRIMARY_WASM_ARTIFACT = existsSync(LOCAL_WASM_ARTIFACT) ? LOCAL_WASM_ARTIFACT : PACKAGE_WASM_ARTIFACT;
+const WASM_ARTIFACTS = [
+  { name: 'package rust wasm', path: PACKAGE_WASM_ARTIFACT },
+  ...(existsSync(LOCAL_WASM_ARTIFACT) ? [{ name: 'local rust wasm', path: LOCAL_WASM_ARTIFACT }] : []),
+];
 
 function buildOptions(validationMode) {
   return {
@@ -65,23 +69,25 @@ for (const fixture of fixtures) {
   });
 }
 
-for (const fixture of fixtures) {
-  test(`rust wasm matches typescript playground output: ${fixture.name}`, async () => {
-    const options = buildOptions(fixture.validationMode);
-    const typescript = await processWithTypeScriptCore(fixture.source, options);
-    const rust = await processWithRustWasm(
-      fixture.source,
-      options,
-      readFileSync(WASM_ARTIFACT),
-    );
+for (const wasmArtifact of WASM_ARTIFACTS) {
+  for (const fixture of fixtures) {
+    test(`${wasmArtifact.name} matches typescript playground output: ${fixture.name}`, async () => {
+      const options = buildOptions(fixture.validationMode);
+      const typescript = await processWithTypeScriptCore(fixture.source, options);
+      const rust = await processWithRustWasm(
+        fixture.source,
+        options,
+        readFileSync(wasmArtifact.path),
+      );
 
-    assert.deepEqual(rust.ok, typescript.ok);
-    assert.deepEqual(rust.canonical, typescript.canonical);
-    assert.deepEqual(rust.finalized, typescript.finalized);
-    assert.deepEqual(rust.annotations, typescript.annotations);
-    assert.deepEqual(rust.events, typescript.events);
-    assert.deepEqual(rust.diagnostics, typescript.diagnostics);
-  });
+      assert.deepEqual(rust.ok, typescript.ok);
+      assert.deepEqual(rust.canonical, typescript.canonical);
+      assert.deepEqual(rust.finalized, typescript.finalized);
+      assert.deepEqual(rust.annotations, typescript.annotations);
+      assert.deepEqual(rust.events, typescript.events);
+      assert.deepEqual(rust.diagnostics, typescript.diagnostics);
+    });
+  }
 }
 
 test('typescript playground exposes structured annotation stream records', async () => {
@@ -380,7 +386,7 @@ test('playground validation mode does not duplicate tokenized structured headers
     finalizeScope: 'full',
   };
   const typescript = await processWithTypeScriptCore(source, options);
-  const rust = await processWithRustWasm(source, options, readFileSync(WASM_ARTIFACT));
+  const rust = await processWithRustWasm(source, options, readFileSync(PRIMARY_WASM_ARTIFACT));
 
   assert.deepEqual(typescript.errors, []);
   assert.deepEqual(rust.errors, []);
@@ -440,7 +446,7 @@ test('rust wasm playground adapter emits the normalized engine shape', async () 
   const result = await processWithRustWasm(
     'state:toggle = on\n',
     buildOptions('strict'),
-    readFileSync(WASM_ARTIFACT),
+    readFileSync(PRIMARY_WASM_ARTIFACT),
   );
 
   assert.equal(result.engine, 'rust-wasm');

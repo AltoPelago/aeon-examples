@@ -142,6 +142,83 @@ function normalizeEngineResult(engine, result) {
   };
 }
 
+function positionAtOffset(source, offset) {
+  if (!Number.isInteger(offset) || offset < 0 || offset > source.length) {
+    return null;
+  }
+
+  let line = 1;
+  let column = 1;
+  let current = 0;
+
+  for (const char of source) {
+    if (current >= offset) {
+      break;
+    }
+    current += char.length;
+    if (char === '\n') {
+      line += 1;
+      column = 1;
+    } else {
+      column += 1;
+    }
+  }
+
+  return current === offset ? { line, column, offset } : null;
+}
+
+function positionMatchesSource(source, position) {
+  const actual = positionAtOffset(source, position?.offset);
+  return actual !== null
+    && actual.line === position.line
+    && actual.column === position.column;
+}
+
+function spanMatchesSource(source, span) {
+  return span?.start
+    && span?.end
+    && positionMatchesSource(source, span.start)
+    && positionMatchesSource(source, span.end);
+}
+
+function validationModeHeaderPrefixLength(mode) {
+  if (mode === 'none') {
+    return 0;
+  }
+  const compileMode = mode === 'transport' ? 'transport' : mode;
+  return `aeon:mode = "${compileMode}"\n`.length;
+}
+
+function normalizeDiagnosticSpanForSource(source, span, prefixLength) {
+  if (!span?.start || !span?.end || prefixLength <= 0 || spanMatchesSource(source, span)) {
+    return span ?? null;
+  }
+
+  const candidate = {
+    ...span,
+    start: {
+      ...span.start,
+      line: span.start.line - 1,
+      offset: span.start.offset - prefixLength,
+    },
+    end: {
+      ...span.end,
+      line: span.end.line - 1,
+      offset: span.end.offset - prefixLength,
+    },
+  };
+
+  return spanMatchesSource(source, candidate) ? candidate : span;
+}
+
+function normalizeDiagnosticSpansForSource(diagnostics, source, options) {
+  const prefixLength = validationModeHeaderPrefixLength(options.validationMode);
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    span: normalizeDiagnosticSpanForSource(source, diagnostic.span, prefixLength),
+  }));
+}
+
 function parseSchemaOption(options) {
   if (!options.schemaEnabled) {
     return null;
@@ -399,33 +476,6 @@ function schemaSummary(schema) {
   return `schema: active (${schema.world ?? 'open'} · ${schema.rules.length} rule${schema.rules.length === 1 ? '' : 's'})`;
 }
 
-function applyValidationMode(source, mode) {
-  if (mode === 'none') {
-    return source;
-  }
-
-  const compileMode = mode === 'transport' ? 'transport' : mode;
-  const trivia = String.raw`(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*`;
-  const structuredHeaderRe = new RegExp(`(aeon${trivia}:${trivia}header${trivia}=${trivia}\\{)([\\s\\S]*?)(\\n\\})`, 'm');
-  const shorthandModeRe = new RegExp(`aeon${trivia}:${trivia}mode${trivia}=${trivia}"[^"]*"`, 'm');
-  const structuredModeRe = new RegExp(`(^[ \\t]*mode${trivia}(?::[\\s\\S]*?)?${trivia}=${trivia})"[^"]*"`, 'm');
-
-  if (structuredHeaderRe.test(source)) {
-    return source.replace(structuredHeaderRe, (match, open, body, close) => {
-      if (structuredModeRe.test(body)) {
-        return `${open}${body.replace(structuredModeRe, `$1"${compileMode}"`)}${close}`;
-      }
-      return `${open}${body}\n  mode = "${compileMode}"${close}`;
-    });
-  }
-
-  if (shorthandModeRe.test(source)) {
-    return source.replace(shorthandModeRe, `aeon:mode = "${compileMode}"`);
-  }
-
-  return `aeon:mode = "${compileMode}"\n${source}`;
-}
-
 function annotationCompileOptions(options) {
   return {
     recovery: true,
@@ -476,10 +526,11 @@ export async function processWithTypeScriptCore(source, options) {
     });
   }
 
-  const compileResult = compile(applyValidationMode(source, options.validationMode), {
+  const compileResult = compile(source, {
     maxSeparatorDepth: options.maxSeparatorDepth,
     maxAttributeDepth: options.maxAttributeDepth,
     maxGenericDepth: options.maxGenericDepth,
+    mode: options.validationMode === 'transport' ? 'transport' : options.validationMode,
     ...(options.validationMode === 'strict'
       ? { datatypePolicy: 'reserved_only' }
       : options.validationMode === 'custom'
@@ -552,7 +603,16 @@ export async function processWithTypeScriptCore(source, options) {
 export async function processWithRustWasm(source, options, initInput = undefined) {
   const runtime = await loadAeonWasm(initInput ?? await loadDefaultWasmInput());
   const schema = parseSchemaOption(options);
-  const result = normalizeEngineResult('rust-wasm', runtime.processAeon(source, options));
+  const result = normalizeEngineResult('rust-wasm', runtime.processAeon(source, {
+    ...options,
+    validationMode: options.validationMode === 'transport' ? 'loose' : options.validationMode,
+  }));
+  result.errors = normalizeDiagnosticSpansForSource(result.errors, source, options);
+  result.warnings = normalizeDiagnosticSpansForSource(result.warnings, source, options);
+  result.diagnostics = {
+    errors: result.errors,
+    warnings: result.warnings,
+  };
   const schemaResult = validateSchemaEvents(result.events, schema);
   if (!schemaResult.ok) {
     const errors = [...result.errors, ...schemaResult.errors];

@@ -768,47 +768,20 @@ function insertSourceText(text) {
   setStatus(diagStatusEl, 'stale', 'warn');
 }
 
-function applyValidationMode(source, mode) {
-  if (mode === 'none') {
-    return source;
-  }
-
-  const compileMode = mode === 'transport' ? 'transport' : mode;
-  const trivia = String.raw`(?:(?:\/#[\s\S]*?#\/)|(?:\/\*[\s\S]*?\*\/)|[ \t\r\n])*`;
-  const structuredHeaderRe = new RegExp(`(aeon${trivia}:${trivia}header${trivia}=${trivia}\\{)([\\s\\S]*?)(\\n\\})`, 'm');
-  const shorthandModeRe = new RegExp(`aeon${trivia}:${trivia}mode${trivia}=${trivia}"[^"]*"`, 'm');
-  const structuredModeRe = new RegExp(`(^[ \\t]*mode${trivia}(?::[\\s\\S]*?)?${trivia}=${trivia})"[^"]*"`, 'm');
-
-  if (structuredHeaderRe.test(source)) {
-    return source.replace(structuredHeaderRe, (match, open, body, close) => {
-      if (structuredModeRe.test(body)) {
-        return `${open}${body.replace(structuredModeRe, `$1"${compileMode}"`)}${close}`;
-      }
-      return `${open}${body}\n  mode = "${compileMode}"${close}`;
-    });
-  }
-
-  if (shorthandModeRe.test(source)) {
-    return source.replace(shorthandModeRe, `aeon:mode = "${compileMode}"`);
-  }
-
-  return `aeon:mode = "${compileMode}"\n${source}`;
-}
-
 function describeValidationSource(mode) {
   if (mode === 'none') {
     return 'raw input';
   }
   if (mode === 'transport') {
-    return 'validation-adjusted input (mode forced to transport)';
+    return 'raw input with transport validation';
   }
   if (mode === 'strict') {
-    return 'validation-adjusted input (mode forced to strict)';
+    return 'raw input with strict validation';
   }
   if (mode === 'custom') {
-    return 'validation-adjusted input (mode forced to custom)';
+    return 'raw input with custom datatype validation';
   }
-  return 'validation-adjusted input';
+  return 'raw input with validation';
 }
 
 function describeFinalizeScope(scope) {
