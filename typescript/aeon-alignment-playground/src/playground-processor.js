@@ -377,8 +377,8 @@ function schemaSelectorMatches(selector, event) {
 
 function appendAttributePath(basePath, key) {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
-    ? `${basePath}@${key}`
-    : `${basePath}@[${JSON.stringify(key)}]`;
+    ? `${basePath}.@.${key}`
+    : `${basePath}.@.[${JSON.stringify(key)}]`;
 }
 
 function normalizeSchemaEvent(event) {

@@ -1502,7 +1502,7 @@ function withSchemaRuleAddress(rule, address) {
 }
 
 function isSchemaChildPath(parent, child) {
-  return child.startsWith(`${parent}.`) || child.startsWith(`${parent}[`) || child.startsWith(`${parent}@`);
+  return child.startsWith(`${parent}.`) || child.startsWith(`${parent}[`);
 }
 
 function compareSchemaRulePaths(a, b) {
@@ -1769,10 +1769,16 @@ function updateSchemaChildActionState() {
 }
 
 function parentPath(path) {
-  const attribute = path.lastIndexOf('@');
+  const attribute = path.lastIndexOf('.@.');
+  if (attribute >= 0) {
+    const tail = path.slice(attribute + 3);
+    if (!tail.includes('.') && !tail.includes('[')) {
+      return attribute > 0 ? path.slice(0, attribute) : '$';
+    }
+  }
   const bracket = path.lastIndexOf('[');
   const dot = path.lastIndexOf('.');
-  const cut = Math.max(attribute, bracket, dot);
+  const cut = Math.max(bracket, dot);
   return cut > 0 ? path.slice(0, cut) : '$';
 }
 
@@ -1795,7 +1801,9 @@ function indexedChildPath(base, rows) {
 }
 
 function attributePath(base, key) {
-  return `${base}@${key}`;
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
+    ? `${base}.@.${key}`
+    : `${base}.@.[${JSON.stringify(key)}]`;
 }
 
 function pathEditableName(path) {
@@ -2396,19 +2404,19 @@ function parseSourceBuilderPath(path) {
     return [];
   }
   const segments = [];
-  const pattern = /\.([A-Za-z_][A-Za-z0-9_-]*|"([^"\\]|\\.)*"|'([^'\\]|\\.)*')|\[(\d+)\]|\["((?:[^"\\]|\\.)*)"\]|\['((?:[^'\\]|\\.)*)'\]|@([A-Za-z_][A-Za-z0-9_-]*)/g;
+  const pattern = /\.@\.([A-Za-z_][A-Za-z0-9_-]*)|\.@\.\["((?:[^"\\]|\\.)*)"\]|\.@\.\['((?:[^'\\]|\\.)*)'\]|\.([A-Za-z_][A-Za-z0-9_-]*|"([^"\\]|\\.)*"|'([^'\\]|\\.)*')|\[(\d+)\]|\["((?:[^"\\]|\\.)*)"\]|\['((?:[^'\\]|\\.)*)'\]/g;
   let match;
   while ((match = pattern.exec(path)) !== null) {
     const token = match[0];
-    if (token.startsWith('.')) {
+    if (match[1] !== undefined || match[2] !== undefined || match[3] !== undefined) {
+      segments.push({ type: 'attr', key: match[1] ?? (match[2] !== undefined ? JSON.parse(`"${match[2]}"`) : match[3]) });
+    } else if (token.startsWith('.')) {
       const key = token.slice(1);
       segments.push({ type: 'key', key: key.startsWith('"') ? JSON.parse(key) : key.startsWith("'") ? key.slice(1, -1) : key });
-    } else if (match[4] !== undefined) {
-      segments.push({ type: 'index', index: Number.parseInt(match[4], 10) });
-    } else if (match[5] !== undefined || match[6] !== undefined) {
-      segments.push({ type: 'key', key: match[5] !== undefined ? JSON.parse(`"${match[5]}"`) : match[6] });
-    } else if (token.startsWith('@')) {
-      segments.push({ type: 'attr', key: match[7] });
+    } else if (match[7] !== undefined) {
+      segments.push({ type: 'index', index: Number.parseInt(match[7], 10) });
+    } else if (match[8] !== undefined || match[9] !== undefined) {
+      segments.push({ type: 'key', key: match[8] !== undefined ? JSON.parse(`"${match[8]}"`) : match[9] });
     }
   }
   return segments;
@@ -2420,7 +2428,7 @@ function aeonBindingKey(key) {
 
 function sourceRowHasChildren(row, rows) {
   return SOURCE_CONTAINER_TYPES.has(row.type)
-    && rows.some((candidate) => candidate !== row && parentPath(candidate.path) === row.path && !candidate.path.includes('@'));
+    && rows.some((candidate) => candidate !== row && parentPath(candidate.path) === row.path && !candidate.path.includes('.@.'));
 }
 
 function selectedSourceRowPath() {
@@ -2544,7 +2552,7 @@ function directChildrenForPath(rows, path) {
 
 function attributeRowsForPath(rows, path) {
   return rows
-    .filter((row) => row.path.startsWith(`${path}@`) && parentPath(row.path) === path);
+    .filter((row) => row.path.startsWith(`${path}.@.`) && parentPath(row.path) === path);
 }
 
 function renderSourceAttributes(rows, path) {
@@ -2627,7 +2635,7 @@ function buildSourceFromBuilder() {
   const rows = orderSourceRows(readSourceBuilderRows());
   const topLevel = rows
     .filter((row) => parseSourceBuilderPath(row.path).length === 1 && !parseSourceBuilderPath(row.path).some((segment) => segment.type === 'attr'))
-    .filter((row) => !row.path.includes('@'));
+    .filter((row) => !row.path.includes('.@.'));
   return topLevel.map((row) => renderSourceBinding(row, rows)).join('\n\n');
 }
 

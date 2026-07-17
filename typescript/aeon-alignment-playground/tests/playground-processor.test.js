@@ -306,7 +306,8 @@ test('schema codec emits AEOS wrapper and format directive', () => {
 
   assert.match(schemaText, /^\/\/! format:aeos-v1\n/);
   assert.match(schemaText, /aeos:schema = \{/);
-  assert.match(schemaText, /selector:string = "\$\.app\.tags\.\*"/);
+  assert.match(schemaText, /selector:sansa = \$\.app\.tags\.\*/);
+  assert.match(schemaText, /path:sansa = \$\.app\.name/);
   assert.deepEqual(parseSchemaText(schemaText), {
     world: 'open',
     rules: [
@@ -324,7 +325,7 @@ test('schema codec rejects legacy indexed wildcard rules', () => {
         { path: '$.items[*]', constraints: { type: 'StringLiteral' } },
       ],
     })),
-    /legacy \[\*\] wildcard syntax/,
+    /Legacy indexed wildcard '\[\*\]' is not valid/,
   );
 });
 
@@ -440,17 +441,17 @@ test('typescript playground validates nullable, null value, numeric widening, an
   );
 });
 
-test('typescript playground validates schema rules against attribute paths', async () => {
+test('typescript playground validates schema rules against SANSA attribute-space paths', async () => {
   const passing = await processWithTypeScriptCore(
     'width@{x:string = "cm"}:list = [@{unit:string = "cm"} = 3]\n',
     {
       ...buildOptions('strict'),
       schemaEnabled: true,
-      schemaText: JSON.stringify({
+      schemaText: schemaToAeon({
         world: 'open',
         rules: [
-          { path: '$.width@x', constraints: { type: 'StringLiteral', required: true } },
-          { selector: '$.width.*@unit', constraints: { type: 'StringLiteral', required: true } },
+          { path: '$.width.@.x', constraints: { type: 'StringLiteral', required: true } },
+          { path: '$.width[0].@.unit', constraints: { type: 'StringLiteral', required: true } },
         ],
       }),
     },
@@ -462,11 +463,11 @@ test('typescript playground validates schema rules against attribute paths', asy
     {
       ...buildOptions('strict'),
       schemaEnabled: true,
-      schemaText: JSON.stringify({
+      schemaText: schemaToAeon({
         world: 'open',
         rules: [
-          { path: '$.width@missing', constraints: { type: 'StringLiteral', required: true } },
-          { selector: '$.width.*@unit', constraints: { type: 'NumberLiteral', required: true } },
+          { path: '$.width.@.missing', constraints: { type: 'StringLiteral', required: true } },
+          { selector: '$.width.*.@.unit', constraints: { type: 'NumberLiteral', required: true } },
         ],
       }),
     },
