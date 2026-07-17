@@ -236,12 +236,143 @@ function schemaDiag(code, path, message, span = null) {
   };
 }
 
-function wildcardPattern(path) {
-  return new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\[\\\*\\\]/g, '\\[\\d+\\]')}$`);
+function schemaRuleAddress(rule) {
+  return rule.selector ?? rule.path;
 }
 
-function schemaPathMatches(rulePath, eventPath) {
-  return rulePath === eventPath || wildcardPattern(rulePath).test(eventPath);
+function schemaRuleMatches(rule, event) {
+  if (typeof rule.path === 'string') {
+    return rule.path === event.path;
+  }
+  if (typeof rule.selector !== 'string') {
+    return false;
+  }
+  return schemaSelectorMatches(rule.selector, event);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function globToRegExp(value) {
+  return escapeRegExp(value)
+    .replace(/\\\*/g, '[^.\\[]*')
+    .replace(/\\\?/g, '[^.\\[]');
+}
+
+function lowerFirst(value) {
+  return value ? `${value[0].toLowerCase()}${value.slice(1)}` : value;
+}
+
+function datatypeBaseName(datatype) {
+  const text = String(datatype ?? '').trim();
+  const generic = text.indexOf('<');
+  return (generic >= 0 ? text.slice(0, generic) : text).toLowerCase();
+}
+
+function selectorFilterMatches(selector, event) {
+  const semantic = selector.match(/#([A-Za-z_][A-Za-z0-9_-]*)/g)?.at(-1)?.slice(1);
+  if (semantic && datatypeBaseName(event.datatype) !== semantic.toLowerCase()) {
+    return false;
+  }
+  const representation = selector.match(/%([A-Za-z_][A-Za-z0-9_-]*)/g)?.at(-1)?.slice(1);
+  if (representation && lowerFirst(event.valueType) !== representation) {
+    return false;
+  }
+  return true;
+}
+
+function stripSelectorFilters(selector) {
+  let out = '';
+  for (let i = 0; i < selector.length; i += 1) {
+    const ch = selector[i];
+    if ((ch === '#' || ch === '%') && /[A-Za-z_]/.test(selector[i + 1] ?? '')) {
+      i += 1;
+      while (/[A-Za-z0-9_-]/.test(selector[i + 1] ?? '')) {
+        i += 1;
+      }
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function readBalancedSelectorPattern(selector, start) {
+  let quote = null;
+  for (let i = start; i < selector.length; i += 1) {
+    const ch = selector[i];
+    if (quote) {
+      if (ch === '\\') {
+        i += 1;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === ')') {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function selectorToRegExp(selector) {
+  const safeMember = '(?:[A-Za-z_][A-Za-z0-9_-]*|\\["(?:\\\\.|[^"])*"\\])';
+  const oneSegment = `(?:\\.${safeMember}|\\[\\d+\\])`;
+  const text = stripSelectorFilters(selector);
+  if (!text.startsWith('$')) {
+    return null;
+  }
+
+  let pattern = '^\\$';
+  for (let i = 1; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === '.') {
+      if (text.startsWith('**', i + 1)) {
+        pattern += `(?:${oneSegment})*`;
+        i += 2;
+        continue;
+      }
+      if (text[i + 1] === '*') {
+        pattern += oneSegment;
+        i += 1;
+        continue;
+      }
+      if (text[i + 1] === '(') {
+        const end = readBalancedSelectorPattern(text, i + 2);
+        if (end < 0) {
+          return null;
+        }
+        const raw = text.slice(i + 2, end);
+        const glob = raw.startsWith('"') && raw.endsWith('"')
+          ? JSON.parse(raw)
+          : raw.startsWith("'") && raw.endsWith("'")
+            ? raw.slice(1, -1)
+            : raw;
+        pattern += `\\.${globToRegExp(String(glob))}`;
+        i = end;
+        continue;
+      }
+      pattern += '\\.';
+      continue;
+    }
+    if (ch === '@') {
+      pattern += '@';
+      continue;
+    }
+    pattern += escapeRegExp(ch);
+  }
+  return new RegExp(`${pattern}$`);
+}
+
+function schemaSelectorMatches(selector, event) {
+  if (selector.includes('[*]') || !selectorFilterMatches(selector, event)) {
+    return false;
+  }
+  return selectorToRegExp(selector)?.test(event.path) ?? false;
 }
 
 function appendAttributePath(basePath, key) {
@@ -361,11 +492,12 @@ function validateSchemaEvents(rawEvents, schema) {
   const errors = [];
 
   for (const rule of schema.rules) {
-    const matches = events.filter((event) => schemaPathMatches(rule.path, event.path));
+    const ruleAddress = schemaRuleAddress(rule);
+    const matches = events.filter((event) => schemaRuleMatches(rule, event));
     const constraints = rule.constraints;
 
     if (constraints.required === true && matches.length === 0) {
-      errors.push(schemaDiag('missing_required_field', rule.path, `Missing required field: ${rule.path}`));
+      errors.push(schemaDiag('missing_required_field', ruleAddress, `Missing required field: ${ruleAddress}`));
       continue;
     }
 
@@ -452,7 +584,7 @@ function validateSchemaEvents(rawEvents, schema) {
   if (schema.world === 'closed') {
     const unexpected = new Set();
     for (const event of events) {
-      if (!schema.rules.some((rule) => schemaPathMatches(rule.path, event.path))) {
+      if (!schema.rules.some((rule) => schemaRuleMatches(rule, event))) {
         if (unexpected.has(event.path)) {
           continue;
         }

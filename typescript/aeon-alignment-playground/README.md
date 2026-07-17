@@ -77,6 +77,7 @@ npm run test:playground
 - Rust comparison uses `@altopelago/aeon-wasm`.
 - AEON open/save uses browser file and download APIs.
 - Schema validation is intentionally dependency-light in this playground and
-  supports the shared v1 rule shape used by AEOS: `world`, `rules`, `path`, and
-  common constraints such as `required`, `type`, `datatype`, string length and
-  pattern checks, numeric bounds, container kind, and exact child count.
+  supports the shared v1 rule shape used by AEOS: `world`, `rules`, exact
+  `path` rules, SANSA `selector` rules using `.*`, and common constraints such
+  as `required`, `type`, `datatype`, string length and pattern checks, numeric
+  bounds, container kind, and exact child count.

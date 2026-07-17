@@ -27,7 +27,7 @@ const SAMPLE_SCHEMA = {
     { path: '$.app.enabled', constraints: { type: 'BooleanLiteral', required: true } },
     { path: '$.app.port', constraints: { type: 'NumberLiteral', required: true, sign: 'unsigned', min_value: '1', max_value: '65535' } },
     { path: '$.app.tags', constraints: { type: 'ListNode', required: true } },
-    { path: '$.app.tags[*]', constraints: { type: 'StringLiteral' } },
+    { selector: '$.app.tags.*', constraints: { type: 'StringLiteral' } },
   ],
 };
 
@@ -1266,7 +1266,8 @@ let schemaBuilderOpenPathsInitialized = false;
 function schemaRuleFieldsHtml(rule, hasChildRules = false) {
   const constraints = rule.constraints ?? {};
   const type = constraints.type ?? '';
-  const path = rule.path ?? '$.field';
+  const path = schemaRuleAddress(rule) || '$.field';
+  const isSelector = schemaRuleAddressKind(rule) === 'selector';
   const nullValue = typeof constraints.null_value === 'string' ? constraints.null_value : '';
   const nullValuePreset = nullValue === ''
     ? ''
@@ -1276,8 +1277,8 @@ function schemaRuleFieldsHtml(rule, hasChildRules = false) {
   const customNullValue = nullValuePreset === 'custom' ? nullValue : '';
   return `
       <label class="control-field schema-field-full">
-        <span>Key${hasChildRules ? '<small>has child rules</small>' : ''}</span>
-        <input data-field="path" type="text" value="${escapeHtml(pathEditableName(path))}" ${pathAllowsNameEdit(path) ? '' : 'disabled'} />
+        <span>${isSelector ? 'Selector' : 'Key'}${hasChildRules ? '<small>has child rules</small>' : ''}</span>
+        <input data-field="path" type="text" value="${escapeHtml(isSelector ? path : pathEditableName(path))}" ${!isSelector && pathAllowsNameEdit(path) ? '' : 'disabled'} />
       </label>
       <label class="control-field schema-field-full">
         <span>Type</span>
@@ -1436,7 +1437,9 @@ function validateSchemaRuleRow(row) {
   clearSchemaRuleValidation(row);
   const keyInput = row.querySelector('[data-field="path"]');
   const currentPath = row.dataset.path ?? schemaBuilderSelectedPath ?? '';
-  const candidatePath = pathWithEditableName(currentPath, keyInput?.value.trim() ?? '');
+  const candidatePath = row.dataset.ruleKind === 'selector'
+    ? currentPath
+    : pathWithEditableName(currentPath, keyInput?.value.trim() ?? '');
   if (hasDuplicatePath(schemaBuilderSchema.rules, candidatePath, currentPath)) {
     markSchemaRuleInvalid(row, ['path'], 'Duplicate binding name at this level.');
   }
@@ -1483,13 +1486,28 @@ function updateAllSchemaConstraintStates() {
   updateSchemaConstraintState(schemaDetailEl.querySelector('.schema-rule'));
 }
 
+function schemaRuleAddress(rule) {
+  return rule?.selector ?? rule?.path ?? '';
+}
+
+function schemaRuleAddressKind(rule) {
+  return rule?.selector ? 'selector' : 'path';
+}
+
+function withSchemaRuleAddress(rule, address) {
+  const { path, selector, ...rest } = rule;
+  return schemaRuleAddressKind(rule) === 'selector'
+    ? { ...rest, selector: address }
+    : { ...rest, path: address };
+}
+
 function isSchemaChildPath(parent, child) {
   return child.startsWith(`${parent}.`) || child.startsWith(`${parent}[`) || child.startsWith(`${parent}@`);
 }
 
 function compareSchemaRulePaths(a, b) {
-  const left = a.path ?? '';
-  const right = b.path ?? '';
+  const left = schemaRuleAddress(a);
+  const right = schemaRuleAddress(b);
   if (left === right) {
     return 0;
   }
@@ -1510,22 +1528,22 @@ function sortSchemaRules(schema) {
 }
 
 function schemaRuleHasDescendants(rule, rules) {
-  const path = rule.path ?? '';
-  return path.length > 0 && rules.some((candidate) => candidate !== rule && isSchemaChildPath(path, candidate.path ?? ''));
+  const path = schemaRuleAddress(rule);
+  return path.length > 0 && rules.some((candidate) => candidate !== rule && isSchemaChildPath(path, schemaRuleAddress(candidate)));
 }
 
 function schemaParentPath(path, rules) {
   const parents = rules
-    .map((rule) => rule.path ?? '')
+    .map((rule) => schemaRuleAddress(rule))
     .filter((candidate) => candidate && candidate !== path && isSchemaChildPath(candidate, path))
     .sort((left, right) => right.length - left.length);
   return parents[0] ?? parentPath(path);
 }
 
 function schemaRuleIsVisible(rule, rules) {
-  let current = schemaParentPath(rule.path ?? '', rules);
+  let current = schemaParentPath(schemaRuleAddress(rule), rules);
   while (current && current !== '$') {
-    const parent = rules.find((candidate) => candidate.path === current);
+    const parent = rules.find((candidate) => schemaRuleAddress(candidate) === current);
     if (parent && schemaRuleHasDescendants(parent, rules) && !schemaBuilderOpenPaths.has(current)) {
       return false;
     }
@@ -1535,7 +1553,7 @@ function schemaRuleIsVisible(rule, rules) {
 }
 
 function schemaTreeItemHtml(rule, rules, selectedPath) {
-  const path = rule.path ?? '$.field';
+  const path = schemaRuleAddress(rule) || '$.field';
   const hasChildren = schemaRuleHasDescendants(rule, rules);
   const isOpen = schemaBuilderOpenPaths.has(path);
   const segments = parseSourceBuilderPath(path);
@@ -1561,15 +1579,16 @@ function schemaRuleDetailHtml(rule, rules) {
     return '<div class="source-empty-detail">Select a rule to edit it.</div>';
   }
   const hasChildRules = schemaRuleHasDescendants(rule, rules);
+  const path = schemaRuleAddress(rule) || '$.field';
   return `
     <div class="source-detail-head">
       <div>
-        <h3>${escapeHtml(rule.path ?? '$.field')}</h3>
+        <h3>${escapeHtml(path)}</h3>
         <p><span class="source-detail-type">${escapeHtml(rule.constraints?.type || 'any')}</span></p>
       </div>
       <button id="schema-remove-selected" type="button">Remove</button>
     </div>
-    <div class="schema-rule source-detail-grid" data-path="${escapeHtml(rule.path ?? '$.field')}">
+    <div class="schema-rule source-detail-grid" data-path="${escapeHtml(path)}" data-rule-kind="${escapeHtml(schemaRuleAddressKind(rule))}">
       ${schemaRuleFieldsHtml(rule, hasChildRules)}
     </div>
   `;
@@ -1632,8 +1651,12 @@ function readSchemaRuleFromRow(row) {
     if (Number.isFinite(value)) constraints[key] = value;
   }
 
+  const ruleKind = row.dataset.ruleKind === 'selector' ? 'selector' : 'path';
+  const currentAddress = row.dataset.path ?? schemaBuilderSelectedPath ?? '$.field';
   return {
-    path: pathWithEditableName(row.dataset.path ?? schemaBuilderSelectedPath ?? '$.field', read('path')?.value.trim() || pathEditableName(row.dataset.path ?? schemaBuilderSelectedPath ?? '$.field')),
+    [ruleKind]: ruleKind === 'selector'
+      ? currentAddress
+      : pathWithEditableName(currentAddress, read('path')?.value.trim() || pathEditableName(currentAddress)),
     constraints,
   };
 }
@@ -1643,40 +1666,41 @@ function syncSelectedSchemaDetail() {
   if (!(row instanceof HTMLElement) || !schemaBuilderSelectedPath) {
     return;
   }
-  const index = schemaBuilderSchema.rules.findIndex((rule) => rule.path === schemaBuilderSelectedPath);
+  const index = schemaBuilderSchema.rules.findIndex((rule) => schemaRuleAddress(rule) === schemaBuilderSelectedPath);
   if (index < 0) {
     return;
   }
   const nextRule = readSchemaRuleFromRow(row);
-  if (hasDuplicatePath(schemaBuilderSchema.rules, nextRule.path, schemaBuilderSelectedPath)) {
+  const nextAddress = schemaRuleAddress(nextRule);
+  if (hasDuplicatePath(schemaBuilderSchema.rules, nextAddress, schemaBuilderSelectedPath)) {
     setPathControlInvalid(row.querySelector('[data-field="path"]'), true, 'Duplicate binding name at this level.');
     return;
   }
   const oldPath = schemaBuilderSelectedPath;
-  if (nextRule.path !== oldPath) {
+  if (nextAddress !== oldPath) {
     schemaBuilderSchema.rules = schemaBuilderSchema.rules.map((rule) => {
-      if (rule.path === oldPath) {
+      if (schemaRuleAddress(rule) === oldPath) {
         return nextRule;
       }
-      return { ...rule, path: rebaseChildPath(rule.path, oldPath, nextRule.path) };
+      return withSchemaRuleAddress(rule, rebaseChildPath(schemaRuleAddress(rule), oldPath, nextAddress));
     });
   } else {
     schemaBuilderSchema.rules[index] = nextRule;
   }
-  schemaBuilderSelectedPath = nextRule.path;
+  schemaBuilderSelectedPath = nextAddress;
 }
 
 function removeSelectedSchemaRule() {
   syncSelectedSchemaDetail();
   const selected = schemaBuilderSelectedPath;
-  schemaBuilderSchema.rules = schemaBuilderSchema.rules.filter((rule) => rule.path !== selected && !isSchemaChildPath(selected, rule.path));
+  schemaBuilderSchema.rules = schemaBuilderSchema.rules.filter((rule) => schemaRuleAddress(rule) !== selected && !isSchemaChildPath(selected, schemaRuleAddress(rule)));
   schemaBuilderOpenPaths.delete(selected);
-  renderSchemaBuilder(schemaBuilderSchema, schemaBuilderSchema.rules[0]?.path ?? null);
+  renderSchemaBuilder(schemaBuilderSchema, schemaRuleAddress(schemaBuilderSchema.rules[0]) || null);
 }
 
 function selectedSchemaRule() {
   syncSelectedSchemaDetail();
-  return schemaBuilderSchema.rules.find((rule) => rule.path === schemaBuilderSelectedPath);
+  return schemaBuilderSchema.rules.find((rule) => schemaRuleAddress(rule) === schemaBuilderSelectedPath);
 }
 
 function selectedSchemaRulePath() {
@@ -1707,12 +1731,12 @@ function renderSchemaBuilder(schema, selectedPath = null) {
   const sortedSchema = sortSchemaRules(schema);
   schemaBuilderSchema = sortedSchema;
   schemaBuilderWorldEl.value = schema.world === 'closed' ? 'closed' : 'open';
-  const activePath = selectedPath ?? sortedSchema.rules[0]?.path ?? null;
+  const activePath = selectedPath ?? (schemaRuleAddress(sortedSchema.rules[0]) || null);
   schemaBuilderSelectedPath = activePath;
   if (!schemaBuilderOpenPathsInitialized) {
     for (const rule of sortedSchema.rules) {
       if (schemaRuleHasDescendants(rule, sortedSchema.rules)) {
-        schemaBuilderOpenPaths.add(rule.path);
+        schemaBuilderOpenPaths.add(schemaRuleAddress(rule));
       }
     }
     schemaBuilderOpenPathsInitialized = true;
@@ -1721,7 +1745,7 @@ function renderSchemaBuilder(schema, selectedPath = null) {
     .filter((rule) => schemaRuleIsVisible(rule, sortedSchema.rules))
     .map((rule) => schemaTreeItemHtml(rule, sortedSchema.rules, activePath))
     .join('');
-  schemaDetailEl.innerHTML = schemaRuleDetailHtml(sortedSchema.rules.find((rule) => rule.path === activePath), sortedSchema.rules);
+  schemaDetailEl.innerHTML = schemaRuleDetailHtml(sortedSchema.rules.find((rule) => schemaRuleAddress(rule) === activePath), sortedSchema.rules);
   updateAllSchemaConstraintStates();
   updateSchemaChildActionState();
   scrollSchemaRuleIntoView(schemaRuleListEl.querySelector('.schema-tree-item.is-selected'));
@@ -1752,9 +1776,12 @@ function parentPath(path) {
   return cut > 0 ? path.slice(0, cut) : '$';
 }
 
-function childPath(base, key, many = false) {
-  const prefix = many ? `${base}[*]` : base;
-  return `${prefix}.${key}`;
+function childPath(base, key) {
+  return `${base}.${key}`;
+}
+
+function childSelector(base, key) {
+  return `${base}.*.${key}`;
 }
 
 function indexedChildPath(base, rows) {
@@ -1797,7 +1824,7 @@ function pathWithEditableName(path, name) {
 }
 
 function hasDuplicatePath(rows, path, currentPath) {
-  return rows.some((row) => row.path === path && row.path !== currentPath);
+  return rows.some((row) => schemaRuleAddress(row) === path && schemaRuleAddress(row) !== currentPath);
 }
 
 function setPathControlInvalid(control, invalid, message = '') {
@@ -1835,14 +1862,16 @@ function addSchemaRule(kind) {
   const selected = selectedSchemaRulePath();
   const base = kind === 'peer' ? parentPath(selected) : selected;
   const index = schema.rules.length + 1;
-  const path = kind === 'attribute'
+  const address = kind === 'attribute'
     ? attributePath(base, `attr${index}`)
-    : childPath(base, kind === 'peer' ? `peer${index}` : `child${index}`, kind === 'child-many');
+    : kind === 'child-many'
+      ? childSelector(base, `child${index}`)
+      : childPath(base, kind === 'peer' ? `peer${index}` : `child${index}`);
   schema.rules.push({
-    path,
+    ...(kind === 'child-many' ? { selector: address } : { path: address }),
     constraints: { type: 'StringLiteral', required: true },
   });
-  renderSchemaBuilder(schema, path);
+  renderSchemaBuilder(schema, address);
 }
 
 function seedSchemaFromSource() {
@@ -2244,12 +2273,14 @@ function sourceRowsFromSource() {
   if (rows.length > 0) {
     return rows;
   }
-  return structuredClone(SAMPLE_SCHEMA.rules).map((rule) => ({
-    path: rule.path,
-    type: rule.constraints?.type ?? 'StringLiteral',
-    datatype: rule.constraints?.datatype ?? sourceDatatypeForType(rule.constraints?.type ?? 'StringLiteral'),
-    value: sourceDefaultValueForType(rule.constraints?.type ?? 'StringLiteral'),
-  }));
+  return structuredClone(SAMPLE_SCHEMA.rules)
+    .filter((rule) => rule.path)
+    .map((rule) => ({
+      path: rule.path,
+      type: rule.constraints?.type ?? 'StringLiteral',
+      datatype: rule.constraints?.datatype ?? sourceDatatypeForType(rule.constraints?.type ?? 'StringLiteral'),
+      value: sourceDefaultValueForType(rule.constraints?.type ?? 'StringLiteral'),
+    }));
 }
 
 function orderSourceRows(rows) {

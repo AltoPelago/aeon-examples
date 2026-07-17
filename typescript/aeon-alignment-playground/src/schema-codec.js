@@ -16,14 +16,20 @@ function normalizeRules(rules) {
       if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
         throw new Error(`Schema rule ${index + 1} must be an object.`);
       }
-      if (typeof rule.path !== 'string' || rule.path.length === 0) {
-        throw new Error(`Schema rule ${index + 1} must include a path.`);
+      const hasPath = typeof rule.path === 'string' && rule.path.length > 0;
+      const hasSelector = typeof rule.selector === 'string' && rule.selector.length > 0;
+      if (hasPath === hasSelector) {
+        throw new Error(`Schema rule ${index + 1} must include exactly one of path or selector.`);
+      }
+      const address = hasPath ? rule.path : rule.selector;
+      if (address.includes('[*]')) {
+        throw new Error(`Schema rule ${index + 1} uses legacy [*] wildcard syntax; use a SANSA selector with .* instead.`);
       }
       if (!rule.constraints || typeof rule.constraints !== 'object' || Array.isArray(rule.constraints)) {
         throw new Error(`Schema rule ${index + 1} must include constraints.`);
       }
       return {
-        path: rule.path,
+        ...(hasPath ? { path: rule.path } : { selector: rule.selector }),
         constraints: rule.constraints,
       };
     });
@@ -33,6 +39,9 @@ function normalizeRules(rules) {
     return Object.entries(rules).map(([path, constraints]) => {
       if (!constraints || typeof constraints !== 'object' || Array.isArray(constraints)) {
         throw new Error(`Schema rule ${path} must be an object.`);
+      }
+      if (path.includes('[*]')) {
+        throw new Error(`Schema rule ${path} uses legacy [*] wildcard syntax; use a SANSA selector with .* instead.`);
       }
       return { path, constraints };
     });
@@ -115,7 +124,11 @@ export function schemaToAeon(schema) {
 
   for (const rule of normalized.rules) {
     lines.push('    {');
-    lines.push(`      path:string = ${aeonString(rule.path)}`);
+    if (rule.selector) {
+      lines.push(`      selector:string = ${aeonString(rule.selector)}`);
+    } else {
+      lines.push(`      path:string = ${aeonString(rule.path)}`);
+    }
     lines.push('      constraints:object = {');
     for (const [key, value] of Object.entries(rule.constraints)) {
       if (value === undefined || value === null || value === '') {

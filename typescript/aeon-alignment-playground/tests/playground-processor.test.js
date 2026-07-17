@@ -300,17 +300,56 @@ test('schema codec emits AEOS wrapper and format directive', () => {
     world: 'open',
     rules: [
       { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+      { selector: '$.app.tags.*', constraints: { type: 'StringLiteral' } },
     ],
   });
 
   assert.match(schemaText, /^\/\/! format:aeos-v1\n/);
   assert.match(schemaText, /aeos:schema = \{/);
+  assert.match(schemaText, /selector:string = "\$\.app\.tags\.\*"/);
   assert.deepEqual(parseSchemaText(schemaText), {
     world: 'open',
     rules: [
       { path: '$.app.name', constraints: { type: 'StringLiteral', required: true } },
+      { selector: '$.app.tags.*', constraints: { type: 'StringLiteral' } },
     ],
   });
+});
+
+test('schema codec rejects legacy indexed wildcard rules', () => {
+  assert.throws(
+    () => parseSchemaText(JSON.stringify({
+      world: 'open',
+      rules: [
+        { path: '$.items[*]', constraints: { type: 'StringLiteral' } },
+      ],
+    })),
+    /legacy \[\*\] wildcard syntax/,
+  );
+});
+
+test('typescript playground applies SANSA selector schema rules', async () => {
+  const result = await processWithTypeScriptCore(
+    'app:object = {\n  tags:list = ["ok", 3]\n}\n',
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { path: '$.app', constraints: { type: 'ObjectNode', required: true } },
+          { path: '$.app.tags', constraints: { type: 'ListNode', required: true } },
+          { selector: '$.app.tags.*', constraints: { type: 'StringLiteral' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => error.code),
+    ['type_mismatch'],
+  );
 });
 
 test('typescript playground rejects unexpected bindings in closed schema world', async () => {
@@ -411,7 +450,7 @@ test('typescript playground validates schema rules against attribute paths', asy
         world: 'open',
         rules: [
           { path: '$.width@x', constraints: { type: 'StringLiteral', required: true } },
-          { path: '$.width[*]@unit', constraints: { type: 'StringLiteral', required: true } },
+          { selector: '$.width.*@unit', constraints: { type: 'StringLiteral', required: true } },
         ],
       }),
     },
@@ -427,7 +466,7 @@ test('typescript playground validates schema rules against attribute paths', asy
         world: 'open',
         rules: [
           { path: '$.width@missing', constraints: { type: 'StringLiteral', required: true } },
-          { path: '$.width[*]@unit', constraints: { type: 'NumberLiteral', required: true } },
+          { selector: '$.width.*@unit', constraints: { type: 'NumberLiteral', required: true } },
         ],
       }),
     },
