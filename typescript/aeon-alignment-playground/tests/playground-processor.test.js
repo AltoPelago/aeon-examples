@@ -9,8 +9,9 @@ import { processWithRustWasm, processWithTypeScriptCore } from '../src/playgroun
 import { parseSchemaText, schemaToAeon } from '../src/schema-codec.js';
 import { seedSchemaFromAeonSource } from '../src/schema-seed.js';
 
+const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const LOCAL_WASM_ARTIFACT = resolve(
-  dirname(fileURLToPath(import.meta.url)),
+  TEST_DIR,
   '../../../../aeon/implementations/typescript/packages/wasm/pkg/aeon_wasm_bg.wasm',
 );
 
@@ -25,6 +26,24 @@ const WASM_ARTIFACTS = [
   ...(existsSync(LOCAL_WASM_ARTIFACT) ? [{ name: 'local rust wasm', path: LOCAL_WASM_ARTIFACT }] : []),
 ];
 
+async function loadLocalPlaygroundProcessor() {
+  const previousPackageSource = process.env.AEON_PACKAGE_SOURCE;
+  process.env.AEON_PACKAGE_SOURCE = 'local';
+
+  const { createServer } = await import('vite');
+  const server = await createServer({
+    root: resolve(TEST_DIR, '..'),
+    configFile: resolve(TEST_DIR, '../vite.config.ts'),
+    server: { middlewareMode: true, hmr: false },
+    appType: 'custom',
+    logLevel: 'silent',
+  });
+
+  process.env.AEON_PACKAGE_SOURCE = previousPackageSource;
+  const processor = await server.ssrLoadModule('/src/playground-processor.js');
+  return { server, processor };
+}
+
 function buildOptions(validationMode) {
   return {
     validationMode,
@@ -38,6 +57,10 @@ function buildOptions(validationMode) {
 }
 
 for (const fixture of fixtures) {
+  if (fixture.requiresCurrentAeon) {
+    continue;
+  }
+
   test(`typescript playground parity: ${fixture.name}`, async () => {
     const result = await processWithTypeScriptCore(
       fixture.source,
@@ -71,6 +94,10 @@ for (const fixture of fixtures) {
 
 for (const wasmArtifact of WASM_ARTIFACTS) {
   for (const fixture of fixtures) {
+    if (fixture.requiresCurrentAeon) {
+      continue;
+    }
+
     test(`${wasmArtifact.name} matches typescript playground output: ${fixture.name}`, async () => {
       const options = buildOptions(fixture.validationMode);
       const typescript = await processWithTypeScriptCore(fixture.source, options);
@@ -89,6 +116,81 @@ for (const wasmArtifact of WASM_ARTIFACTS) {
     });
   }
 }
+
+test('local rust wasm playground adapter accepts SANSA address literals', async (t) => {
+  if (!existsSync(LOCAL_WASM_ARTIFACT)) {
+    t.skip('local AEON WASM artifact is not available');
+    return;
+  }
+
+  const { loadAeonWasm } = await import(
+    '../../../../aeon/implementations/typescript/packages/wasm/dist/index.js'
+  );
+  const runtime = await loadAeonWasm(readFileSync(LOCAL_WASM_ARTIFACT));
+  const result = runtime.processAeon('csv:sansa = $.inventory:csv[","]\nctx:sansa = ?.name\n', {
+    ...buildOptions('strict'),
+    validationMode: 'strict',
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(
+    result.events.map((event) => event.valueType),
+    ['SansaAddressLiteral', 'SansaAddressLiteral'],
+  );
+  assert.deepEqual(result.finalized, {
+    document: {
+      csv: '$.inventory:csv[","]',
+      ctx: '?.name',
+    },
+  });
+});
+
+test('current playground processors accept SANSA address literal boundaries', async (t) => {
+  if (!existsSync(LOCAL_WASM_ARTIFACT)) {
+    t.skip('local AEON WASM artifact is not available');
+    return;
+  }
+
+  const source = [
+    'a:sansa = $.name/* block */',
+    'b:sansa = $.name// line',
+    'c:list = [$.name]',
+    'd:node = <tag($.name)>',
+    'e:tuple = ($.name)',
+  ].join('\n');
+  const { server, processor } = await loadLocalPlaygroundProcessor();
+  t.after(async () => {
+    await server.close();
+  });
+
+  const options = buildOptions('strict');
+  const typescript = await processor.processWithTypeScriptCore(source, options);
+  const rust = await processor.processWithRustWasm(source, options, readFileSync(LOCAL_WASM_ARTIFACT));
+
+  assert.equal(typescript.ok, true);
+  assert.deepEqual(typescript.errors, []);
+  assert.deepEqual(
+    typescript.events.map((event) => event.path),
+    ['$.a', '$.b', '$.c', '$.c[0]', '$.d', '$.d[0]', '$.e', '$.e[0]'],
+  );
+  assert.deepEqual(
+    typescript.events.map((event) => event.valueType),
+    [
+      'SansaAddressLiteral',
+      'SansaAddressLiteral',
+      'ListNode',
+      'SansaAddressLiteral',
+      'NodeLiteral',
+      'SansaAddressLiteral',
+      'TupleLiteral',
+      'SansaAddressLiteral',
+    ],
+  );
+  assert.deepEqual(rust.ok, typescript.ok);
+  assert.deepEqual(rust.events, typescript.events);
+  assert.deepEqual(rust.diagnostics, typescript.diagnostics);
+});
 
 test('typescript playground exposes structured annotation stream records', async () => {
   const result = await processWithTypeScriptCore(

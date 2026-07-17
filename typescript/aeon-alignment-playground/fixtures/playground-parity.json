@@ -50,6 +50,17 @@
     "eventTypes": ["ToggleLiteral", "ToggleLiteral"]
   },
   {
+    "name": "sansa-address-literals",
+    "source": "csv:sansa = $.inventory:csv[\",\"]\nctx:sansa = ?.name\n",
+    "validationMode": "strict",
+    "canonicalContains": ["csv:sansa = $.inventory:csv[\",\"]", "ctx:sansa = ?.name"],
+    "errorCodes": [],
+    "warningCodes": [],
+    "eventPaths": ["$.csv", "$.ctx"],
+    "eventTypes": ["SansaAddressLiteral", "SansaAddressLiteral"],
+    "requiresCurrentAeon": true
+  },
+  {
     "name": "binding-and-indexed-child-attributes",
     "source": "width@{x:string = \"cm\"}:list = [@{unit:string = \"cm\"} = 3]\n",
     "validationMode": "strict",

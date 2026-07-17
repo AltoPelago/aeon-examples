@@ -72,6 +72,8 @@ npm run test:playground
 - `npm run dev:local` and `npm run build:local` alias `@altopelago/aeon-*`
   imports to `../../../aeon/implementations/typescript/packages/*/dist` and the
   local Rust WASM artifact.
+- Local mode also aliases `@altopelago/sansa` to `../../../sansa/src/index.js`
+  so current SANSA address literal parser changes are available before publish.
 - Rust comparison uses `@altopelago/aeon-wasm`.
 - AEON open/save uses browser file and download APIs.
 - Schema validation is intentionally dependency-light in this playground and

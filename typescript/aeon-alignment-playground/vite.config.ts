@@ -5,6 +5,10 @@ const localPackageRoot = new URL(
   '../../../aeon/implementations/typescript/packages/',
   import.meta.url,
 ).pathname;
+const localSansaEntry = new URL(
+  '../../../sansa/src/index.js',
+  import.meta.url,
+).pathname;
 
 const aeonAliases = aeonPackageSource === 'local'
   ? {
@@ -16,6 +20,7 @@ const aeonAliases = aeonPackageSource === 'local'
       '@altopelago/aeon-lexer': `${localPackageRoot}lexer/dist/index.js`,
       '@altopelago/aeon-parser': `${localPackageRoot}parser/dist/index.js`,
       '@altopelago/aeon-wasm': `${localPackageRoot}wasm/dist/index.js`,
+      '@altopelago/sansa': localSansaEntry,
     }
   : {};
 

@@ -82,6 +82,30 @@ app = {
       schemaText: schemaToAeon({ ...SAMPLE_SCHEMA, world: 'open' }),
     },
   },
+  sansa: {
+    source: `//# SANSA Address literal sample
+aeon:header = {
+  mode:string = "strict"
+  encoding:string = "utf-8"
+  profile:string = "aeon.gp.profile.v1"
+  version:string = "1"
+}
+
+csv:sansa = $.inventory:csv[","]
+ctx:sansa = ?.name
+sku:sansa = $.inventory.items[2].sku`,
+    settings: {
+      validationMode: 'strict',
+      separatorDepth: '8',
+      attributeDepth: '1',
+      genericDepth: '1',
+      materializationMode: 'all',
+      finalizeScope: 'payload',
+      includePaths: '',
+      schemaEnabled: false,
+      schemaText: schemaToAeon({ ...SAMPLE_SCHEMA, world: 'open' }),
+    },
+  },
   custom: {
     source: `//# Custom datatype sample
 aeon:header = {
@@ -173,6 +197,10 @@ const sourceTabInsertsTabEl = document.getElementById('source-tab-inserts-tab');
 const fileOpenBtn = document.getElementById('file-open');
 const fileSaveBtn = document.getElementById('file-save');
 const fileSaveAsBtn = document.getElementById('file-save-as');
+const sampleStrictBtn = document.getElementById('sample-strict');
+const sampleTransportBtn = document.getElementById('sample-transport');
+const sampleSansaBtn = document.getElementById('sample-sansa');
+const sampleCustomBtn = document.getElementById('sample-custom');
 const aeosImportBtn = document.getElementById('aeos-import');
 const aeosExportBtn = document.getElementById('aeos-export');
 const importImageBase64Btn = document.getElementById('import-image-base64');
@@ -383,7 +411,8 @@ function sanitizeBindingName(value) {
 function buildImageBase64Snippet(image) {
   const stem = image.name.replace(/\.[^.]+$/, '');
   const binding = sanitizeBindingName(stem);
-  return `${binding}@{mime="${image.mime}",binname="${image.name}",binkind="image"}:base64 = $${image.base64}\n`;
+  const base64url = image.base64.replace(/\+/g, '-').replace(/\//g, '_');
+  return `${binding}@{mime="${image.mime}",binname="${image.name}",binkind="image"}:base64 = &${base64url}\n`;
 }
 
 function appendSourceSnippet(snippet) {
@@ -2961,6 +2990,22 @@ fileSaveBtn.addEventListener('click', () => {
 fileSaveAsBtn.addEventListener('click', () => {
   closeMenu();
   void saveAeonFile(true);
+});
+sampleStrictBtn.addEventListener('click', () => {
+  closeMenu();
+  void applySample('strict');
+});
+sampleTransportBtn.addEventListener('click', () => {
+  closeMenu();
+  void applySample('transport');
+});
+sampleSansaBtn.addEventListener('click', () => {
+  closeMenu();
+  void applySample('sansa');
+});
+sampleCustomBtn.addEventListener('click', () => {
+  closeMenu();
+  void applySample('custom');
 });
 aeosImportBtn.addEventListener('click', () => {
   closeMenu();
