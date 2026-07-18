@@ -2,42 +2,55 @@ aeos:schema = {
   id = "altopelago.contact-list.schema.v1"
   version = "1"
 
-  rules = {
-    "$.contacts" = {
-      required = true
-      type = "ListNode"
-      datatype = "contactList"
+  rules:list<object> = [
+    {
+      path:sansa = $.contacts
+      constraints:object = {
+        required:boolean = true
+        type:string = "ListNode"
+        datatype:string = "contactList"
+      }
     }
-
-    "$.contacts[*].firstName" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 1
+    {
+      selector:sansa = $.contacts.*.firstName
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 1
+      }
     }
-
-    "$.contacts[*].lastName" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 1
+    {
+      selector:sansa = $.contacts.*.lastName
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 1
+      }
     }
-
-    "$.contacts[*].email" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 3
+    {
+      selector:sansa = $.contacts.*.email
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 3
+      }
     }
-
-    "$.contacts[*].phone" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 8
+    {
+      selector:sansa = $.contacts.*.phone
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 8
+      }
     }
-
-    "$.contacts[*].countryCode" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 2
-      max_length = 2
+    {
+      selector:sansa = $.contacts.*.countryCode
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 2
+        max_length:int = 2
+      }
     }
-  }
+  ]
 }

@@ -3,46 +3,59 @@ aeos:schema = {
   version = "1"
   world = "closed"
 
-  rules = {
-    "$.app" = {
-      required = true
-      type = "ObjectNode"
-      datatype = "config"
+  rules:list<object> = [
+    {
+      path:sansa = $.app
+      constraints:object = {
+        required:boolean = true
+        type:string = "ObjectNode"
+        datatype:string = "config"
+      }
     }
-
-    "$.app.name" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 1
+    {
+      path:sansa = $.app.name
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 1
+      }
     }
-
-    "$.app.port" = {
-      required = true
-      type = "IntegerLiteral"
-      sign = "unsigned"
-      min_value = "1"
-      max_value = "65535"
+    {
+      path:sansa = $.app.port
+      constraints:object = {
+        required:boolean = true
+        type:string = "IntegerLiteral"
+        sign:string = "unsigned"
+        min_value:string = "1"
+        max_value:string = "65535"
+      }
     }
-
-    "$.app.region" = {
-      required = true
-      reference = "allow"
-      reference_target_path = "$.regions[*]"
-      type = "StringLiteral"
-      min_length = 3
-      resolve_reference_form = true
+    {
+      path:sansa = $.app.region
+      constraints:object = {
+        required:boolean = true
+        reference:string = "allow"
+        reference_target_pattern:string = "^\\$\\.regions\\[\\d+\\]$"
+        type:string = "StringLiteral"
+        min_length:int = 3
+        resolve_reference_form:boolean = true
+      }
     }
-
-    "$.regions" = {
-      required = true
-      type = "ListNode"
-      datatype = "stringList"
+    {
+      path:sansa = $.regions
+      constraints:object = {
+        required:boolean = true
+        type:string = "ListNode"
+        datatype:string = "stringList"
+      }
     }
-
-    "$.regions[*]" = {
-      required = true
-      type = "StringLiteral"
-      min_length = 3
+    {
+      selector:sansa = $.regions.*
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+        min_length:int = 3
+      }
     }
-  }
+  ]
 }

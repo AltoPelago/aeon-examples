@@ -11,7 +11,7 @@
       }
     },
     {
-      "path": "$.contacts[*].firstName",
+      "selector": "$.contacts.*.firstName",
       "constraints": {
         "required": true,
         "type": "StringLiteral",
@@ -19,7 +19,7 @@
       }
     },
     {
-      "path": "$.contacts[*].lastName",
+      "selector": "$.contacts.*.lastName",
       "constraints": {
         "required": true,
         "type": "StringLiteral",
@@ -27,7 +27,7 @@
       }
     },
     {
-      "path": "$.contacts[*].email",
+      "selector": "$.contacts.*.email",
       "constraints": {
         "required": true,
         "type": "StringLiteral",
@@ -35,7 +35,7 @@
       }
     },
     {
-      "path": "$.contacts[*].phone",
+      "selector": "$.contacts.*.phone",
       "constraints": {
         "required": true,
         "type": "StringLiteral",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "path": "$.contacts[*].countryCode",
+      "selector": "$.contacts.*.countryCode",
       "constraints": {
         "required": true,
         "type": "StringLiteral",

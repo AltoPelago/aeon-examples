@@ -18,8 +18,8 @@ function fail(message) {
 }
 
 function normalizePath(path) {
-  // Collapse list indexes so one rule can validate every contact entry.
-  return path.replace(/\[\d+\]/g, '[*]').replace(/\.\[\*\]/g, '[*]');
+  // Collapse list indexes to SANSA-style direct expansion.
+  return path.replace(/\[\d+\]/g, '.*');
 }
 
 function scalarValue(event) {
@@ -49,19 +49,19 @@ function validateBySwitch(rawPath, value) {
   let success = false;
   // This switch treats the assignment stream like a lightweight schema layer.
   switch (path) {
-    case 'contacts[*].firstName':
+    case 'contacts.*.firstName':
       success = isNonEmptyString(value);
       break;
-    case 'contacts[*].lastName':
+    case 'contacts.*.lastName':
       success = isNonEmptyString(value);
       break;
-    case 'contacts[*].email':
+    case 'contacts.*.email':
       success = isEmail(value);
       break;
-    case 'contacts[*].phone':
+    case 'contacts.*.phone':
       success = isPhone(value);
       break;
-    case 'contacts[*].countryCode':
+    case 'contacts.*.countryCode':
       success = isCountryCode(value);
       break;
     default:

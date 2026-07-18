@@ -36,7 +36,7 @@ Implementation note:
 
 ## AEON assignment-stream validation example
 
-This demonstrates the AEON.AS pattern: validate from `compile.events` via normalized paths (for example `contacts[*].firstName`) before trusting `finalized.document`.
+This demonstrates the AEON.AS pattern: validate from `compile.events` via normalized SANSA-style selectors (for example `contacts.*.firstName`) before trusting `finalized.document`.
 
 ```bash
 npm run read-contacts-assignment -- ./data/contacts.aeon

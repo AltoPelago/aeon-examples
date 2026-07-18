@@ -52,10 +52,10 @@ aeon:header = {
 In `schema.aeos`, the author-facing rule uses:
 
 ```aeon
-reference_target_path = "$.postcodes[*]"
+reference_target_pattern = "^\\$\\.postcodes\\[\\d+\\]$"
 ```
 
-That projects to the runtime-facing rule in `schema.json`:
+That is the runtime-facing rule in `schema.json`:
 
 ```json
 {

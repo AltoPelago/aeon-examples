@@ -78,10 +78,11 @@ and so on.
 
 ## Authoring note
 
-The `.aeos` schemas use the nicer authoring surface where appropriate:
+The `.aeos` schemas use explicit runtime-facing constraints where appropriate:
 
-- `reference_target_path = "$.regions[*]"`
+- `reference_target_pattern = "^\\$\\.regions\\[\\d+\\]$"`
+- `selector = "$.regions.*"`
 
-The JSON mirrors keep the projected runtime form:
+The JSON mirrors keep the same runtime form:
 
 - `reference_target_pattern = "^\\$\\.regions\\[\\d+\\]$"`

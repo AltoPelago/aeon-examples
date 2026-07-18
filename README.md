@@ -49,7 +49,7 @@ language.
 | Example | What it demonstrates |
 | --- | --- |
 | [Contracts Baseline](./shared/contracts-baseline/) | Contract registry resolution for `aeon:profile` and `aeon:schema`, including trusted artifact hash verification before load. |
-| [Reference-Safe Schema](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_path` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
+| [Reference-Safe Schema](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_pattern` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
 | [Schema Policy Showcase](./shared/schema-policy-showcase/) | Comparative schema behavior: open vs closed world, reference allowed vs forbidden, and direct-literal requirements over the same AEON document. |
 
 ## Repository Hygiene
