@@ -3,6 +3,7 @@ import { canonicalize } from '@altopelago/aeon-canonical';
 import { compile, formatPath } from '@altopelago/aeon-core';
 import { finalizeJson } from '@altopelago/aeon-finalize';
 import { loadAeonWasm } from '@altopelago/aeon-wasm';
+import { parseAddress, resolveAddress } from '@altopelago/sansa';
 import { parseSchemaText } from './schema-codec.js';
 
 let defaultWasmInputPromise;
@@ -240,28 +241,14 @@ function schemaRuleAddress(rule) {
   return rule.selector ?? rule.path;
 }
 
-function schemaRuleMatches(rule, event) {
+function schemaRuleMatches(rule, event, selectorMatchSets = new Map()) {
   if (typeof rule.path === 'string') {
     return rule.path === event.path;
   }
   if (typeof rule.selector !== 'string') {
     return false;
   }
-  return schemaSelectorMatches(rule.selector, event);
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function globToRegExp(value) {
-  return escapeRegExp(value)
-    .replace(/\\\*/g, '[^.\\[]*')
-    .replace(/\\\?/g, '[^.\\[]');
-}
-
-function lowerFirst(value) {
-  return value ? `${value[0].toLowerCase()}${value.slice(1)}` : value;
+  return selectorMatchSets.get(rule.selector)?.has(event.path) ?? false;
 }
 
 function datatypeBaseName(datatype) {
@@ -270,109 +257,167 @@ function datatypeBaseName(datatype) {
   return (generic >= 0 ? text.slice(0, generic) : text).toLowerCase();
 }
 
-function selectorFilterMatches(selector, event) {
-  const semantic = selector.match(/#([A-Za-z_][A-Za-z0-9_-]*)/g)?.at(-1)?.slice(1);
-  if (semantic && datatypeBaseName(event.datatype) !== semantic.toLowerCase()) {
-    return false;
-  }
-  const representation = selector.match(/%([A-Za-z_][A-Za-z0-9_-]*)/g)?.at(-1)?.slice(1);
-  if (representation && lowerFirst(event.valueType) !== representation) {
-    return false;
-  }
-  return true;
+const SANSA_IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const SCHEMA_REPRESENTATION_KIND_BY_VALUE_TYPE = {
+  StringLiteral: 'string',
+  TrimtickStringLiteral: 'string',
+  NumberLiteral: 'number',
+  IntegerLiteral: 'integer',
+  FloatLiteral: 'float',
+  BooleanLiteral: 'boolean',
+  ToggleLiteral: 'toggle',
+  NullLiteral: 'null',
+  NaNLiteral: 'nan',
+  InfinityLiteral: 'infinity',
+  ObjectNode: 'object',
+  ListNode: 'list',
+  TupleLiteral: 'tuple',
+  TupleNode: 'tuple',
+  NodeLiteral: 'node',
+  HexLiteral: 'hex',
+  EncodingLiteral: 'encoding',
+  RadixLiteral: 'radix',
+  SeparatorLiteral: 'separator',
+  DateLiteral: 'date',
+  TimeLiteral: 'time',
+  DateTimeLiteral: 'datetime',
+  ZRUTDateTimeLiteral: 'datetime',
+  SansaAddressLiteral: 'sansa',
+};
+
+const SCHEMA_FILTER_ALIASES = new Map([
+  ['bool', 'boolean'],
+  ['int', 'integer'],
+]);
+
+function normalizeSchemaFilterName(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return SCHEMA_FILTER_ALIASES.get(normalized) ?? normalized;
 }
 
-function stripSelectorFilters(selector) {
-  let out = '';
-  for (let i = 0; i < selector.length; i += 1) {
-    const ch = selector[i];
-    if ((ch === '#' || ch === '%') && /[A-Za-z_]/.test(selector[i + 1] ?? '')) {
-      i += 1;
-      while (/[A-Za-z0-9_-]/.test(selector[i + 1] ?? '')) {
-        i += 1;
-      }
-      continue;
-    }
-    out += ch;
-  }
-  return out;
+function schemaRepresentationKind(event) {
+  return SCHEMA_REPRESENTATION_KIND_BY_VALUE_TYPE[event.valueType] ?? datatypeBaseName(event.valueType);
 }
 
-function readBalancedSelectorPattern(selector, start) {
-  let quote = null;
-  for (let i = start; i < selector.length; i += 1) {
-    const ch = selector[i];
-    if (quote) {
-      if (ch === '\\') {
-        i += 1;
-      } else if (ch === quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-    } else if (ch === ')') {
-      return i;
-    }
-  }
-  return -1;
+function schemaMemberAddress(parentAddress, name) {
+  return SANSA_IDENTIFIER_RE.test(name)
+    ? `${parentAddress}.${name}`
+    : `${parentAddress}.[${JSON.stringify(name)}]`;
 }
 
-function selectorToRegExp(selector) {
-  const safeMember = '(?:[A-Za-z_][A-Za-z0-9_-]*|\\["(?:\\\\.|[^"])*"\\])';
-  const oneSegment = `(?:\\.${safeMember}|\\[\\d+\\])`;
-  const text = stripSelectorFilters(selector);
-  if (!text.startsWith('$')) {
-    return null;
-  }
-
-  let pattern = '^\\$';
-  for (let i = 1; i < text.length; i += 1) {
-    const ch = text[i];
-    if (ch === '.') {
-      if (text.startsWith('**', i + 1)) {
-        pattern += `(?:${oneSegment})*`;
-        i += 2;
-        continue;
-      }
-      if (text[i + 1] === '*') {
-        pattern += oneSegment;
-        i += 1;
-        continue;
-      }
-      if (text[i + 1] === '(') {
-        const end = readBalancedSelectorPattern(text, i + 2);
-        if (end < 0) {
-          return null;
-        }
-        const raw = text.slice(i + 2, end);
-        const glob = raw.startsWith('"') && raw.endsWith('"')
-          ? JSON.parse(raw)
-          : raw.startsWith("'") && raw.endsWith("'")
-            ? raw.slice(1, -1)
-            : raw;
-        pattern += `\\.${globToRegExp(String(glob))}`;
-        i = end;
-        continue;
-      }
-      pattern += '\\.';
-      continue;
-    }
-    if (ch === '@') {
-      pattern += '@';
-      continue;
-    }
-    pattern += escapeRegExp(ch);
-  }
-  return new RegExp(`${pattern}$`);
+function schemaPositionAddress(parentAddress, index) {
+  return `${parentAddress}[${index}]`;
 }
 
-function schemaSelectorMatches(selector, event) {
-  if (selector.includes('[*]') || !selectorFilterMatches(selector, event)) {
-    return false;
+function createSchemaResolveBinding(address, fields = {}) {
+  return {
+    address,
+    children: [],
+    childByName: new Map(),
+    childByIndex: new Map(),
+    ...fields,
+  };
+}
+
+function getOrCreateSchemaChild(parent, selector) {
+  if (selector.type === 'member') {
+    let child = parent.childByName.get(selector.name);
+    if (!child) {
+      child = createSchemaResolveBinding(schemaMemberAddress(parent.address, selector.name), {
+        name: selector.name,
+      });
+      parent.childByName.set(selector.name, child);
+      parent.children.push(child);
+    }
+    return child;
   }
-  return selectorToRegExp(selector)?.test(event.path) ?? false;
+  if (selector.type === 'position') {
+    let child = parent.childByIndex.get(selector.index);
+    if (!child) {
+      child = createSchemaResolveBinding(schemaPositionAddress(parent.address, selector.index), {
+        index: selector.index,
+      });
+      parent.childByIndex.set(selector.index, child);
+      parent.children.push(child);
+    }
+    return child;
+  }
+  return null;
+}
+
+function getOrCreateSchemaAttributeSpace(parent) {
+  if (!parent.attributeSpace) {
+    parent.attributeSpace = createSchemaResolveBinding(`${parent.address}.@`, {
+      representationKind: 'object',
+    });
+  }
+  return parent.attributeSpace;
+}
+
+function insertSchemaResolveEvent(root, event) {
+  const parsed = parseAddress(event.path);
+  if (!parsed.ok) {
+    return;
+  }
+
+  let current = root;
+  for (const selector of parsed.address.selectors) {
+    if (selector.type === 'attributeSpace') {
+      current = getOrCreateSchemaAttributeSpace(current);
+      continue;
+    }
+    const child = getOrCreateSchemaChild(current, selector);
+    if (!child) {
+      return;
+    }
+    current = child;
+  }
+
+  current.event = event;
+  current.semanticType = event.datatype ?? undefined;
+  current.representationKind = schemaRepresentationKind(event);
+}
+
+function buildSchemaResolveNamespace(events) {
+  const root = createSchemaResolveBinding('$', {
+    representationKind: 'object',
+  });
+  for (const event of events) {
+    insertSchemaResolveEvent(root, event);
+  }
+  return {
+    root,
+    children: (binding) => binding.children,
+    attributeSpace: (binding) => binding.attributeSpace,
+    semanticTypeMatches: (binding, expected) => (
+      normalizeSchemaFilterName(datatypeBaseName(binding.semanticType)) === normalizeSchemaFilterName(expected)
+    ),
+    representationKindMatches: (binding, expected) => (
+      normalizeSchemaFilterName(binding.representationKind) === normalizeSchemaFilterName(expected)
+    ),
+  };
+}
+
+function schemaSelectorMatchSet(selector, namespace) {
+  const result = resolveAddress(selector, namespace);
+  if (!result.ok) {
+    return new Set();
+  }
+  return new Set(
+    result.bindings
+      .filter((binding) => binding.event)
+      .map((binding) => binding.event.path),
+  );
+}
+
+function buildSchemaSelectorMatchSets(rules, namespace) {
+  const matchSets = new Map();
+  for (const rule of rules) {
+    if (typeof rule.selector === 'string' && !matchSets.has(rule.selector)) {
+      matchSets.set(rule.selector, schemaSelectorMatchSet(rule.selector, namespace));
+    }
+  }
+  return matchSets;
 }
 
 function appendAttributePath(basePath, key) {
@@ -490,10 +535,14 @@ function validateSchemaEvents(rawEvents, schema) {
   const events = normalizeSchemaEvents(rawEvents)
     .filter((event) => !event.path.startsWith('$.[\"aeon:'));
   const errors = [];
+  const selectorMatchSets = buildSchemaSelectorMatchSets(
+    schema.rules,
+    buildSchemaResolveNamespace(events),
+  );
 
   for (const rule of schema.rules) {
     const ruleAddress = schemaRuleAddress(rule);
-    const matches = events.filter((event) => schemaRuleMatches(rule, event));
+    const matches = events.filter((event) => schemaRuleMatches(rule, event, selectorMatchSets));
     const constraints = rule.constraints;
 
     if (constraints.required === true && matches.length === 0) {
@@ -584,7 +633,7 @@ function validateSchemaEvents(rawEvents, schema) {
   if (schema.world === 'closed') {
     const unexpected = new Set();
     for (const event of events) {
-      if (!schema.rules.some((rule) => schemaRuleMatches(rule, event))) {
+      if (!schema.rules.some((rule) => schemaRuleMatches(rule, event, selectorMatchSets))) {
         if (unexpected.has(event.path)) {
           continue;
         }

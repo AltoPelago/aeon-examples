@@ -353,6 +353,42 @@ test('typescript playground applies SANSA selector schema rules', async () => {
   );
 });
 
+test('typescript playground resolves schema selectors with SANSA patterns, descendants, and filters', async () => {
+  const result = await processWithTypeScriptCore(
+    [
+      'inventory:object = {',
+      '  items:list = [',
+      '    {',
+      '      sku:string = "A-100"',
+      '      qty:number = 2',
+      '    }',
+      '    {',
+      '      sku:string = "B-200"',
+      '      qty:number = 3',
+      '    }',
+      '  ]',
+      '}',
+    ].join('\n'),
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: JSON.stringify({
+        world: 'open',
+        rules: [
+          { selector: '$.inventory.**.("s?u")#string%string', constraints: { type: 'StringLiteral', pattern: '^A-' } },
+          { selector: '$.inventory.items.*.qty#number%number', constraints: { type: 'NumberLiteral', min_value: '1' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => [error.code, error.path]),
+    [['string_pattern', '$.inventory.items[1].sku']],
+  );
+});
+
 test('typescript playground rejects unexpected bindings in closed schema world', async () => {
   const result = await processWithTypeScriptCore(
     'app:object = {\n  name:string = "ok"\n  debug:boolean = true\n}\n',
@@ -477,6 +513,32 @@ test('typescript playground validates schema rules against SANSA attribute-space
   assert.deepEqual(
     failing.errors.map((error) => error.code),
     ['missing_required_field', 'type_mismatch'],
+  );
+});
+
+test('typescript playground closed-world schemas use SANSA selector resolution', async () => {
+  const result = await processWithTypeScriptCore(
+    [
+      'reading@{unit:string = "cm"}:number = 12',
+      'other:string = "outside"',
+    ].join('\n'),
+    {
+      ...buildOptions('strict'),
+      schemaEnabled: true,
+      schemaText: schemaToAeon({
+        world: 'closed',
+        rules: [
+          { selector: '$.reading.@.*#string%string', constraints: { type: 'StringLiteral' } },
+          { path: '$.reading', constraints: { type: 'NumberLiteral' } },
+        ],
+      }),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((error) => [error.code, error.path]),
+    [['unexpected_binding', '$.other']],
   );
 });
 

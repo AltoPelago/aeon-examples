@@ -16,7 +16,8 @@
     "@altopelago/aeon-canonical": "0.10.0",
     "@altopelago/aeon-core": "0.10.0",
     "@altopelago/aeon-finalize": "0.10.0",
-    "@altopelago/aeon-wasm": "0.10.0"
+    "@altopelago/aeon-wasm": "0.10.0",
+    "@altopelago/sansa": "file:../../../sansa"
   },
   "devDependencies": {
     "vite": "7.3.1"
