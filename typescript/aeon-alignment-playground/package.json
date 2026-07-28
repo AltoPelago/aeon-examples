@@ -23,6 +23,7 @@
     "vite": "7.3.1"
   },
   "overrides": {
+    "postcss": "8.5.18",
     "rollup": "4.60.0"
   }
 }
