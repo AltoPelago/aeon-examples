@@ -19,7 +19,7 @@
     "vite": "7.3.1"
   },
   "dependencies": {
-    "@altopelago/aeon-sdk": "0.11.0"
+    "@altopelago/aeon-sdk": "0.12.0"
   },
   "overrides": {
     "postcss": "8.5.18"
