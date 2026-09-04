@@ -281,7 +281,7 @@ const SCHEMA_REPRESENTATION_KIND_BY_VALUE_TYPE = {
   DateLiteral: 'date',
   TimeLiteral: 'time',
   DateTimeLiteral: 'datetime',
-  ZRUTDateTimeLiteral: 'datetime',
+  WTCDateTimeLiteral: 'wtc',
   SansaAddressLiteral: 'sansa',
 };
 

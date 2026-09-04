@@ -48,7 +48,7 @@ const SCHEMA_TYPES_BY_VALUE_TYPE = new Map([
   ['DateLiteral', 'DateLiteral'],
   ['TimeLiteral', 'TimeLiteral'],
   ['DateTimeLiteral', 'DateTimeLiteral'],
-  ['ZRUTDateTimeLiteral', 'DateTimeLiteral'],
+  ['WTCDateTimeLiteral', 'WTCDateTimeLiteral'],
 ]);
 
 function datatypePolicyForMode(validationMode) {

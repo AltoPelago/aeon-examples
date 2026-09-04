@@ -1965,7 +1965,7 @@ const SOURCE_TYPE_BY_VALUE_TYPE = new Map([
   ['DateLiteral', 'DateLiteral'],
   ['TimeLiteral', 'TimeLiteral'],
   ['DateTimeLiteral', 'DateTimeLiteral'],
-  ['ZRUTDateTimeLiteral', 'DateTimeLiteral'],
+  ['WTCDateTimeLiteral', 'WTCDateTimeLiteral'],
 ]);
 
 let sourceBuilderRows = [];
