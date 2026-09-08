@@ -3,7 +3,7 @@ aeon:header = {
 }
 
 sun:farewell = {
-  version:ver[.] = ^1.2.0
+  version:ver["."] = ^1.2.0
   daytime:string = "Hello, Sun"
   farewell:string = "Sayonara, Sun"
   sleepTight:string = "Sleep tight, Sun"
