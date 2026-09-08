@@ -3,7 +3,7 @@ aeon:header = {
 }
 
 moon:greeting = {
-    version:ver[.] = ^1.0.0
+    version:ver["."] = ^1.0.0
     daytime:string = "Good day, Moon"
     nighttime:string = "Goodnight, Moon"
     hoursBeforeMidnight:number = 4

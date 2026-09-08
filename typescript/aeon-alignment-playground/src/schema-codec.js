@@ -2,7 +2,7 @@ import {
   normalizeSchemaObject,
   parseSchemaSource,
   schemaToAeon as coreSchemaToAeon,
-} from '../../../../aeon/implementations/typescript/packages/aeos/dist/index.js';
+} from '@altopelago/aeos-core';
 
 function schemaCompileOptions(options = {}) {
   return {

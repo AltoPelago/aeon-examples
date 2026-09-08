@@ -2,9 +2,10 @@
 
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
-The examples are configured for registry package versions rather than
-sibling-repo local-path dependencies, so fresh installs exercise the public
-package surface.
+The TypeScript examples use registry package versions. Until the Python and
+Rust packages are published to their registries, those examples pin the
+corresponding tagged GitHub source release. Fresh installs therefore exercise
+public, immutable package surfaces rather than sibling-repository paths.
 
 - `typescript/`
 - `python/`

@@ -159,12 +159,15 @@ fn build_schema() -> Schema {
         datatype_rules: BTreeMap::new(),
         datatype_allowlist: vec![String::from("farewell")],
         world: String::from("open"),
+        reference_policy: None,
+        resource_policy: None,
     }
 }
 
 fn rule(path: &str, constraints: JsonValue) -> SchemaRule {
     SchemaRule {
         path: Some(String::from(path)),
+        selector: None,
         constraints,
     }
 }

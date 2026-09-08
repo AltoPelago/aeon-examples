@@ -7,7 +7,7 @@ A deeper example demonstrating staged AEON validation, nested object evaluation,
 Unlike `aeon-hello-world`, this example focuses on deeper application safeguards before accessing the finalized document:
 
 1. **Datatype stream validation:** checks the `compile.events` stream directly to ensure that `moon` is annotated with the custom datatype `:greeting`.
-2. **Separator-literal convention:** uses `version:ver[.] = ^1.0.0` and validates it as a `SeparatorLiteral`, not as a built-in semver literal.
+2. **Separator-literal convention:** uses `version:ver["."] = ^1.0.0` and validates it as a `SeparatorLiteral`, not as a built-in semver literal.
 3. **Shape validation:** ensures nested structure and expected literal families exist before finalizing.
 4. **Business rule validation:** checks the hour fields on the assignment stream before handing data to application code.
 5. **Application logic:** consumes the trusted finalized object to choose the daytime or nighttime greeting using local system time.

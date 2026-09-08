@@ -5,8 +5,8 @@ edition = "2024"
 publish = false
 
 [dependencies]
-aeon-aeos = { path = "../../../aeon/implementations/rust/crates/aeon-aeos" }
-aeon-core = { path = "../../../aeon/implementations/rust/crates/aeon-core" }
-aeon-sdk = { path = "../../../aeon/implementations/rust/crates/aeon-sdk" }
+aeon-aeos = { git = "https://github.com/AltoPelago/aeon.git", tag = "typescript/v0.12.0", version = "0.12.0" }
+aeon-core = { git = "https://github.com/AltoPelago/aeon.git", tag = "typescript/v0.12.0", version = "0.12.0" }
+aeon-sdk = { git = "https://github.com/AltoPelago/aeon.git", tag = "typescript/v0.12.0", version = "0.12.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

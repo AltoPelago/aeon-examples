@@ -20,6 +20,7 @@ const aeonAliases = aeonPackageSource === 'local'
       '@altopelago/aeon-lexer': `${localPackageRoot}lexer/dist/index.js`,
       '@altopelago/aeon-parser': `${localPackageRoot}parser/dist/index.js`,
       '@altopelago/aeon-wasm': `${localPackageRoot}wasm/dist/index.js`,
+      '@altopelago/aeos-core': `${localPackageRoot}aeos/dist/index.js`,
       '@altopelago/sansa': localSansaEntry,
     }
   : {};
