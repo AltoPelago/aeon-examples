@@ -20,8 +20,8 @@ aeos:schema = {
       required = true
       type = "IntegerLiteral"
       sign = "unsigned"
-      min_value = "1"
-      max_value = "65535"
+      min_value = 1
+      max_value = 65535
     }
 
     "$.app.region" = {

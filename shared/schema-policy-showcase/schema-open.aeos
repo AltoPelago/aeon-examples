@@ -26,8 +26,8 @@ aeos:schema = {
         required:boolean = true
         type:string = "IntegerLiteral"
         sign:string = "unsigned"
-        min_value:string = "1"
-        max_value:string = "65535"
+        min_value:number = 1
+        max_value:number = 65535
       }
     }
     {
