@@ -36,6 +36,7 @@ language.
 | [Validating a Contact List](./typescript/validating-a-contact-list/) | Contact-list ingestion with strict validation, AEOS schema artifacts, assignment-stream checks, sample data generation, and mapping into typed application objects. |
 | [AEON Todo Web App](./typescript/aeon-web-todo/) | A Svelte + Vite browser app that imports todo lists from AEON, autosaves a browser draft, and exports the current list back to AEON. |
 | [AEON Alignment Playground](./typescript/aeon-alignment-playground/) | Browser playground for comparing TypeScript and Rust WASM processing, including canonical output, finalized JSON, annotations, diagnostics, and schema checks. |
+| [SANSA Query Explorer](./typescript/sansa-query-explorer/) | AEON → AES → SANSA walkthrough using the published SDK adapter, with address resolution, filtering, projections, numeric sorting and source provenance. |
 
 ### Python
 
@@ -88,5 +89,6 @@ Focused regression commands after installing each example's dependencies:
 - Contact list: `npm test` in `typescript/validating-a-contact-list`.
 - Alignment playground: `npm run test:playground` in
   `typescript/aeon-alignment-playground` (published WASM by default).
+- SANSA query explorer: `npm test` in `typescript/sansa-query-explorer`.
 - Rust: `cargo test --locked` in each Rust example directory.
 - Python: the unittest command above, using the installed PyPI wheel.

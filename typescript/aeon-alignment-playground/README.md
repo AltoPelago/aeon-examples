@@ -73,6 +73,11 @@ checkout. To additionally test a built local WASM binary:
 AEON_TEST_LOCAL=1 npm run test:playground
 ```
 
+The same command also tests the editor's trimtick token pattern: a single `>`
+with optional SPACE/TAB before the backtick is highlighted as a trimtick string;
+repeated `>>`, `>>>` and `>>>>` markers are not. This is a highlighting fix, not
+a parser or canonical-writer behavior change.
+
 The comparison normalizes native string-spelling labels, identifies WTC
 separately from ordinary datetime, retains authored header order, and supplies
 the known finalization phase for TypeScript finalizer diagnostics. Symbol JSON

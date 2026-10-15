@@ -1,0 +1,19 @@
+{
+  "name": "sansa-query-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node dist/index.js",
+    "test": "npm run build && node --test dist/explorer.test.js"
+  },
+  "dependencies": {
+    "@altopelago/aeon-sdk": "0.15.0",
+    "@altopelago/sansa": "0.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.10.6",
+    "typescript": "5.3.3"
+  }
+}
