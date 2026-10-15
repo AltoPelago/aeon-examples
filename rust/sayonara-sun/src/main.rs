@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use aeon_aeos::{Schema, SchemaRule};
 use aeon_core::{CompileOptions, DatatypePolicy};
-use aeon_sdk::{LoadOptions, load_file};
+use altopelago_aeon::{LoadOptions, load_file};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 
@@ -63,18 +63,8 @@ impl Farewell {
 
 fn main() {
     // Load the typed config and apply AEOS schema validation in one step.
-    let loaded = load_file::<FarewellDocument, _>(
-        example_file(),
-        LoadOptions {
-            compile: CompileOptions {
-                datatype_policy: Some(DatatypePolicy::AllowCustom),
-                ..CompileOptions::default()
-            },
-            schema: Some(build_schema()),
-            ..LoadOptions::default()
-        },
-    )
-    .expect("failed to load FarewellDocument");
+    let loaded = load_file::<FarewellDocument, _>(example_file(), load_options())
+        .expect("failed to load FarewellDocument");
 
     // Schema validation checks structure and literal kinds; these are app rules on top.
     require_business_rules(&loaded.document.sun);
@@ -93,6 +83,17 @@ fn main() {
 
 fn example_file() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("sun.aeon")
+}
+
+fn load_options() -> LoadOptions {
+    LoadOptions {
+        compile: CompileOptions {
+            datatype_policy: Some(DatatypePolicy::AllowCustom),
+            ..CompileOptions::default()
+        },
+        schema: Some(build_schema()),
+        ..LoadOptions::default()
+    }
 }
 
 fn build_schema() -> Schema {
@@ -196,5 +197,35 @@ fn require_business_rules(farewell: &Farewell) {
             "$.sun.wakeHour must be between 1 and 7. Got: {}",
             farewell.wake_hour
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use altopelago_aeon::{AeonLoadError, load_str};
+
+    #[test]
+    fn loads_and_validates_published_registry_types() {
+        let loaded = load_file::<FarewellDocument, _>(example_file(), load_options()).unwrap();
+        require_business_rules(&loaded.document.sun);
+        assert_eq!(loaded.document.sun.message_for_hour(19), "Sayonara, Sun");
+    }
+
+    #[test]
+    fn schema_rejects_a_string_hour() {
+        let source = include_str!("../sun.aeon")
+            .replace("sunsetHour:number = 18", "sunsetHour:string = \"18\"");
+        let result = load_str::<FarewellDocument>(&source, load_options());
+        assert!(matches!(result, Err(AeonLoadError::Schema(_))));
+    }
+
+    #[test]
+    #[should_panic(expected = "$.sun.sunsetHour must be between 16 and 21")]
+    fn business_rules_reject_out_of_range_hour() {
+        let loaded = load_file::<FarewellDocument, _>(example_file(), load_options()).unwrap();
+        let mut sun = loaded.document.sun;
+        sun.sunset_hour = 22;
+        require_business_rules(&sun);
     }
 }

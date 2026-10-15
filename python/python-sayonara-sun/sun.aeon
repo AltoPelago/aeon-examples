@@ -1,5 +1,5 @@
 aeon:header = {
-  mode:string = "strict"
+  mode:string = "custom"
 }
 
 sun:farewell = {

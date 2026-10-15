@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from aeon import AeonLoadError, LoadOptions, LoadedDocument, load_file
+from altopelago.aeon import AeonLoadError, LoadedDocument, load_file
 from farewell import Farewell
 
 
@@ -10,10 +11,7 @@ def load_config(file_path: str | Path) -> Farewell:
     # Load the document and apply AEOS schema checks before business logic runs.
     document = load_file(
         file_path,
-        LoadOptions(
-            schema=build_schema(),
-            datatype_policy="allow_custom",
-        ),
+        schema=json.dumps(build_schema()),
     )
     document.require_ok()
 
@@ -29,6 +27,8 @@ def load_config(file_path: str | Path) -> Farewell:
 
 def build_schema() -> dict[str, object]:
     return {
+        "schema_id": "altopelago.sayonara-sun.schema.v1",
+        "schema_version": "1",
         "rules": [
             {"path": "$.sun", "constraints": {"required": True, "type": "ObjectNode"}},
             {"path": "$.sun.version", "constraints": {"required": True, "type": "SeparatorLiteral"}},
@@ -37,19 +37,19 @@ def build_schema() -> dict[str, object]:
             {"path": "$.sun.sleepTight", "constraints": {"required": True, "type": "StringLiteral"}},
             {
                 "path": "$.sun.sunsetHour",
-                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
+                "constraints": {"required": True, "type": "NumberLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
             },
             {
                 "path": "$.sun.cooldownHours",
-                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
+                "constraints": {"required": True, "type": "NumberLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
             },
             {
                 "path": "$.sun.sleepHour",
-                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
+                "constraints": {"required": True, "type": "NumberLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 2},
             },
             {
                 "path": "$.sun.wakeHour",
-                "constraints": {"required": True, "type": "IntegerLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
+                "constraints": {"required": True, "type": "NumberLiteral", "sign": "unsigned", "min_digits": 1, "max_digits": 1},
             },
         ]
     }
@@ -70,23 +70,23 @@ def map_farewell(document: LoadedDocument) -> Farewell:
 
 def require_datatype(document: LoadedDocument, path: str, datatype: str) -> None:
     for event in document.compile.events:
-        if event.get("path") == path:
-            if event.get("datatype") != datatype:
-                raise AeonLoadError(f"{path} must be typed as :{datatype}")
+        if event.path == path:
+            if event.datatype != datatype:
+                raise AeonLoadError((f"{path} must be typed as :{datatype}",))
             return
-    raise AeonLoadError(f"Missing required assignment at {path}")
+    raise AeonLoadError((f"Missing required assignment at {path}",))
 
 
 def require_unsigned_integer_range(document: LoadedDocument, path: str, minimum: int, maximum: int) -> None:
     value = read_integer_literal(document, path)
     if value < minimum or value > maximum:
-        raise AeonLoadError(f"{path} must be between {minimum} and {maximum}. Got: {value}")
+        raise AeonLoadError((f"{path} must be between {minimum} and {maximum}. Got: {value}",))
 
 
 def read_string_literal(document: LoadedDocument, path: str) -> str:
     value = document.require(path)
     if not isinstance(value, str):
-        raise AeonLoadError(f"{path} must materialize to a string")
+        raise AeonLoadError((f"{path} must materialize to a string",))
     return value
 
 
@@ -96,6 +96,6 @@ def read_separator_literal(document: LoadedDocument, path: str) -> str:
 
 def read_integer_literal(document: LoadedDocument, path: str) -> int:
     value = document.require(path)
-    if not isinstance(value, int):
-        raise AeonLoadError(f"{path} must materialize to an integer")
+    if type(value) is not int:
+        raise AeonLoadError((f"{path} must materialize to an integer",))
     return value

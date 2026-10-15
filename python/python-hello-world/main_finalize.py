@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from aeon import load_file
+from altopelago.aeon import load_file
 
 
 loaded = load_file(Path(__file__).resolve().parent / "hello.aeon")

@@ -8,6 +8,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { formatPath, readAeonChecked } from '@altopelago/aeon-sdk';
+import { validateContactHeader } from './contact-header.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+\d{7,15}$/;
@@ -123,6 +124,7 @@ async function main() {
 
   // readAeonChecked gives us both the assignment stream and finalized document.
   const parsed = readAeonChecked(text, { finalize: { mode: 'loose' } });
+  validateContactHeader(parsed.compile);
   validateAssignments(parsed);
 
   const root = asRecord(parsed.finalized.document, 'root');
