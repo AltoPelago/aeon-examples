@@ -2,6 +2,7 @@ import { processWithRustWasm, processWithTypeScriptCore } from './playground-pro
 import { parseSchemaText, schemaToAeon } from './schema-codec.js';
 import { BUILTIN_SCHEMA_TYPES_BY_DATATYPE, seedSchemaFromAeonSource } from './schema-seed.js';
 import { compile, formatPath } from '@altopelago/aeon-core';
+import { trimtickStringPattern } from './literal-patterns.js';
 
 const SAMPLE = `//# AEON alignment playground sample
 aeon:header = {
@@ -680,7 +681,7 @@ function tokenizeAeonLine(line, state) {
     ['typed-key', new RegExp(`${AEON_KEY}(?=\\s*${AEON_TYPE}\\s*=)`, 'y')],
     ['typed-value', new RegExp(`${AEON_TYPE}(?=\\s*=)`, 'y')],
     ['key', new RegExp(`${AEON_KEY}(?=\\s*(?:@\\{|=))`, 'y')],
-    ['trimtick-string', />{1,4}`(?:\\.|[^`])*`/y],
+    ['trimtick-string', trimtickStringPattern],
     ['string-template', /`(?:\\.|[^`])*`/y],
     ['string', /"(?:\\.|[^"])*"|'(?:\\.|[^'])*'/y],
     ['literal', /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z)?&[A-Za-z0-9_./+-]+\b/y],

@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:local": "AEON_PACKAGE_SOURCE=local vite build",
     "preview": "vite preview",
-    "test:playground": "node --test ./tests/playground-processor.test.js"
+    "test:playground": "node --test ./tests/playground-processor.test.js ./tests/literal-patterns.test.js"
   },
   "dependencies": {
     "@altopelago/aeon-annotation-stream": "0.15.0",

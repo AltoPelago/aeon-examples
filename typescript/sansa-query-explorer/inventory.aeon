@@ -1,0 +1,63 @@
+aeon:header = {
+  mode:string = "custom"
+}
+
+inventory:inventoryRecord = {
+  version:ver["."] = ^1.0.0
+  warehouse:string = "Pacific-North"
+  categories:categoryMap = {
+    hardware:string = "Hardware & Mounts"
+    tooling:string = "Hand Tools & Kits"
+    sensors:string = "Sensors & Diagnostics"
+  }
+  items:productList = [
+    {
+      sku:string = "A-100"
+      name:string = "Adapter Bracket"
+      category:string = "hardware"
+      qty:number = 14
+      price:number = 9.95
+      active:boolean = true
+    }
+    {
+      sku:string = "B-200"
+      name:string = "Heavy Duty Clamp"
+      category:string = "hardware"
+      qty:number = 4
+      price:number = 24.50
+      active:boolean = true
+    }
+    {
+      sku:string = "C-300"
+      name:string = "Coupler Nut M8"
+      category:string = "hardware"
+      qty:number = 0
+      price:number = 15.00
+      active:boolean = false
+    }
+    {
+      sku:string = "D-250"
+      name:string = "Torque Driver"
+      category:string = "tooling"
+      qty:number = 8
+      price:number = 34.99
+      active:boolean = true
+    }
+    {
+      sku:string = "E-110"
+      name:string = "Extractor Bit Set"
+      category:string = "tooling"
+      qty:number = 2
+      price:number = 49.95
+      active:boolean = false
+    }
+    {
+      sku:string = "S-400"
+      name:string = "Thermal Probe"
+      category:string = "sensors"
+      qty:number = 6
+      price:number = 89.00
+      active:boolean = true
+    }
+  ]
+}
