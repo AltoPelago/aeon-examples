@@ -47,7 +47,13 @@ function valueTypeName(value) {
   return normalizeValueType(value?.valueType ?? value?.type ?? 'Unknown');
 }
 
-function normalizeValueType(valueType) {
+function normalizeValueType(valueType, canonicalValue) {
+  // Native trimticks are a string spelling, not a distinct portable AES family.
+  if (valueType === 'TrimtickStringLiteral') return 'StringLiteral';
+  // TypeScript retains WTC under DateTimeLiteral; native WASM names it explicitly.
+  if (valueType === 'DateTimeLiteral' && typeof canonicalValue === 'string' && canonicalValue.includes('&')) {
+    return 'WTCDateTimeLiteral';
+  }
   return valueType;
 }
 
@@ -57,7 +63,6 @@ function summarizeHeaderFields(header) {
   }
 
   return Array.from(header.fields.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => ({
       path: headerFieldPath(key),
       key: `aeon:${key}`,
@@ -86,7 +91,7 @@ function normalizeTsEvents(events) {
     path: formatPath(event.path),
     key: event.key,
     datatype: event.datatype ?? null,
-    valueType: valueTypeName(event.value),
+    valueType: normalizeValueType(valueTypeName(event.value), event.value?.value),
     }));
 }
 
@@ -775,8 +780,12 @@ export async function processWithTypeScriptCore(source, options) {
       compileResult.header,
       options.finalizeScope,
     ),
-    warnings: finalized.meta?.warnings ?? [],
-    errors: finalized.meta?.errors ?? [],
+    warnings: (finalized.meta?.warnings ?? []).map((diagnostic) => ({
+      ...diagnostic, phase: diagnostic.phase ?? 'Finalization',
+    })),
+    errors: (finalized.meta?.errors ?? []).map((diagnostic) => ({
+      ...diagnostic, phase: diagnostic.phase ?? 'Finalization',
+    })),
     schema: schemaSummary(schema),
   });
 }

@@ -6,6 +6,9 @@ This is the smallest readable starting point for the Python implementation. It i
 
 ## Usage
 
+Use CPython 3.12–3.14 in a virtual environment. The requirement installs the
+published Rust-backed `altopelago-aeon==0.15.0` wheel.
+
 ```bash
 cd python/python-hello-world
 python3 -m pip install -r requirements.txt
@@ -19,13 +22,13 @@ python3 main_finalize.py
 - `hello.aeon` - strict-mode AEON input document.
 - `main_minimal.py` - the shortest copyable version.
 - `main.py` - the same example with a few explanatory comments.
-- `main_finalize.py` - the minimal version using `finalize_json(...)`.
+- `main_finalize.py` - the minimal version reading the finalized `document`.
 
 ## What It Does
 
 All three scripts only do three things:
 
-1. imports the installed `aeon-python` package
+1. imports `altopelago.aeon` from the installed native package
 2. loads `hello.aeon`
 3. reads `greeting` and prints it
 
@@ -45,4 +48,5 @@ If you want the fuller "compile + schema validation + business rules" shape, use
 
 ## Notes
 
-The installed package name is `aeon-python`; the import module is `aeon`.
+The installed package name is `altopelago-aeon`; the import is
+`altopelago.aeon`. It does not fall back to the pure-Python reference.

@@ -20,29 +20,12 @@ const PACKAGE_WASM_ARTIFACT = resolve(
   '../pkg/aeon_wasm_bg.wasm',
 );
 
-const PRIMARY_WASM_ARTIFACT = existsSync(LOCAL_WASM_ARTIFACT) ? LOCAL_WASM_ARTIFACT : PACKAGE_WASM_ARTIFACT;
+const PRIMARY_WASM_ARTIFACT = PACKAGE_WASM_ARTIFACT;
+const testLocalWasm = process.env.AEON_TEST_LOCAL === '1' && existsSync(LOCAL_WASM_ARTIFACT);
 const WASM_ARTIFACTS = [
   { name: 'package rust wasm', path: PACKAGE_WASM_ARTIFACT },
-  ...(existsSync(LOCAL_WASM_ARTIFACT) ? [{ name: 'local rust wasm', path: LOCAL_WASM_ARTIFACT }] : []),
+  ...(testLocalWasm ? [{ name: 'local rust wasm', path: LOCAL_WASM_ARTIFACT }] : []),
 ];
-
-async function loadLocalPlaygroundProcessor() {
-  const previousPackageSource = process.env.AEON_PACKAGE_SOURCE;
-  process.env.AEON_PACKAGE_SOURCE = 'local';
-
-  const { createServer } = await import('vite');
-  const server = await createServer({
-    root: resolve(TEST_DIR, '..'),
-    configFile: resolve(TEST_DIR, '../vite.config.ts'),
-    server: { middlewareMode: true, hmr: false },
-    appType: 'custom',
-    logLevel: 'silent',
-  });
-
-  process.env.AEON_PACKAGE_SOURCE = previousPackageSource;
-  const processor = await server.ssrLoadModule('/src/playground-processor.js');
-  return { server, processor };
-}
 
 function buildOptions(validationMode) {
   return {
@@ -57,10 +40,6 @@ function buildOptions(validationMode) {
 }
 
 for (const fixture of fixtures) {
-  if (fixture.requiresCurrentAeon) {
-    continue;
-  }
-
   test(`typescript playground parity: ${fixture.name}`, async () => {
     const result = await processWithTypeScriptCore(
       fixture.source,
@@ -89,16 +68,32 @@ for (const fixture of fixtures) {
       result.events.map((event) => event.valueType),
       fixture.eventTypes ?? [],
     );
+    if ('finalizedDocument' in fixture) {
+      assert.deepEqual(result.finalized.document, fixture.finalizedDocument);
+    }
+    const roundTrip = await processWithTypeScriptCore(result.canonical.text, buildOptions(fixture.validationMode));
+    assert.equal(roundTrip.canonical.text, result.canonical.text);
+    if (!fixture.canonicalRoundTripIssue) {
+      assert.deepEqual(roundTrip.finalized, result.finalized);
+      assert.deepEqual(roundTrip.errors.map(error => error.code), result.errors.map(error => error.code));
+    }
   });
+
+  if (fixture.canonicalRoundTripIssue) {
+    test(`canonical reference round-trip: ${fixture.name}`, { todo: fixture.canonicalRoundTripIssue }, async () => {
+      const options = buildOptions(fixture.validationMode);
+      const original = await processWithTypeScriptCore(fixture.source, options);
+      const reparsed = await processWithTypeScriptCore(original.canonical.text, options);
+      assert.deepEqual(reparsed.finalized, original.finalized);
+      assert.deepEqual(reparsed.errors.map(error => error.code), original.errors.map(error => error.code));
+    });
+  }
 }
 
 for (const wasmArtifact of WASM_ARTIFACTS) {
   for (const fixture of fixtures) {
-    if (fixture.requiresCurrentAeon) {
-      continue;
-    }
-
-    test(`${wasmArtifact.name} matches typescript playground output: ${fixture.name}`, async () => {
+    const comparison = fixture.diagnosticDifferences ? 'preserves documented diagnostic differences' : 'matches typescript playground output';
+    test(`${wasmArtifact.name} ${comparison}: ${fixture.name}`, async () => {
       const options = buildOptions(fixture.validationMode);
       const typescript = await processWithTypeScriptCore(fixture.source, options);
       const rust = await processWithRustWasm(
@@ -112,14 +107,28 @@ for (const wasmArtifact of WASM_ARTIFACTS) {
       assert.deepEqual(rust.finalized, typescript.finalized);
       assert.deepEqual(rust.annotations, typescript.annotations);
       assert.deepEqual(rust.events, typescript.events);
-      assert.deepEqual(rust.diagnostics, typescript.diagnostics);
+      if (fixture.diagnosticDifferences) {
+        // Keep the known wording/range difference visible in the comparison UI.
+        // Assert it explicitly instead of deleting messages/spans from normalization.
+        const stable = ({ code, path, phase }) => ({ code, path, phase });
+        assert.deepEqual(rust.errors.map(stable), typescript.errors.map(stable));
+        assert.deepEqual(rust.warnings, typescript.warnings);
+        assert.equal(rust.errors.length, 1);
+        assert.equal(rust.errors[0].message, fixture.diagnosticDifferences.rustMessage);
+        assert.equal(typescript.errors[0].message, fixture.diagnosticDifferences.typescriptMessage);
+        assert.equal(rust.errors[0].span.start.column, fixture.diagnosticDifferences.rustStartColumn);
+        assert.equal(typescript.errors[0].span.start.column, fixture.diagnosticDifferences.typescriptStartColumn);
+        assert.deepEqual(rust.errors[0].span.end, typescript.errors[0].span.end);
+      } else {
+        assert.deepEqual(rust.diagnostics, typescript.diagnostics);
+      }
     });
   }
 }
 
 test('local rust wasm playground adapter accepts SANSA address literals', async (t) => {
-  if (!existsSync(LOCAL_WASM_ARTIFACT)) {
-    t.skip('local AEON WASM artifact is not available');
+  if (!testLocalWasm) {
+    t.skip('set AEON_TEST_LOCAL=1 to test the optional sibling artifact');
     return;
   }
 
@@ -146,12 +155,7 @@ test('local rust wasm playground adapter accepts SANSA address literals', async 
   });
 });
 
-test('current playground processors accept SANSA address literal boundaries', async (t) => {
-  if (!existsSync(LOCAL_WASM_ARTIFACT)) {
-    t.skip('local AEON WASM artifact is not available');
-    return;
-  }
-
+test('published playground processors accept SANSA address literal boundaries', async () => {
   const source = [
     'a:sansa = $.name/* block */',
     'b:sansa = $.name// line',
@@ -159,14 +163,9 @@ test('current playground processors accept SANSA address literal boundaries', as
     'd:node = <tag($.name)>',
     'e:tuple = ($.name)',
   ].join('\n');
-  const { server, processor } = await loadLocalPlaygroundProcessor();
-  t.after(async () => {
-    await server.close();
-  });
-
   const options = buildOptions('strict');
-  const typescript = await processor.processWithTypeScriptCore(source, options);
-  const rust = await processor.processWithRustWasm(source, options, readFileSync(LOCAL_WASM_ARTIFACT));
+  const typescript = await processWithTypeScriptCore(source, options);
+  const rust = await processWithRustWasm(source, options, readFileSync(PACKAGE_WASM_ARTIFACT));
 
   assert.equal(typescript.ok, true);
   assert.deepEqual(typescript.errors, []);
@@ -239,8 +238,8 @@ test('typescript playground preserves structured headers with comment trivia bef
   assert.deepEqual(
     result.events.map((event) => event.path),
     [
-      '$.["aeon:encoding"]',
       '$.["aeon:mode"]',
+      '$.["aeon:encoding"]',
       '$.["aeon:profile"]',
       '$.["aeon:version"]',
     ],
@@ -598,7 +597,7 @@ test('playground validation mode does not duplicate tokenized structured headers
   assert.deepEqual(rust.finalized, typescript.finalized);
   assert.deepEqual(
     typescript.events.map((event) => event.path),
-    ['$.["aeon:encoding"]', '$.["aeon:mode"]'],
+    ['$.["aeon:mode"]', '$.["aeon:encoding"]'],
   );
   assert.deepEqual(rust.events, typescript.events);
 });

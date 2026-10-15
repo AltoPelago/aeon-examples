@@ -2,10 +2,16 @@
 
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
-The TypeScript examples use registry package versions. Until the Python and
-Rust packages are published to their registries, those examples pin the
-corresponding tagged GitHub source release. Fresh installs therefore exercise
-public, immutable package surfaces rather than sibling-repository paths.
+The examples use published AEON 0.15.0 packages from npm, crates.io and PyPI.
+Rust uses the public `altopelago-aeon` facade; native Python imports
+`altopelago.aeon` on CPython 3.12–3.14, not the separate pure-Python reference.
+Fresh installs exercise registry artifacts, not sibling-repository paths.
+
+AEON remains on the v1 language line. Consumers of the TypeScript SANSA
+adapter should read the [0.15.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.15.0.md):
+node heads and content have distinct addresses, representation names use
+PascalCase, reference paths are portable strings, and key/head metadata remain
+separate. The ordinary JSON-profile loading examples do not use that adapter.
 
 - `typescript/`
 - `python/`
@@ -32,6 +38,16 @@ language.
 | [AEON Alignment Playground](./typescript/aeon-alignment-playground/) | Browser playground for comparing TypeScript and Rust WASM processing, including canonical output, finalized JSON, annotations, diagnostics, and schema checks. |
 
 ### Python
+
+Create a virtual environment with CPython 3.12, 3.13 or 3.14 before installing
+the pinned requirements. Only the native distribution is used here:
+
+```bash
+python3 -m venv ../aeon-examples-venv
+source ../aeon-examples-venv/bin/activate
+python -m pip install -r python/python-hello-world/requirements.txt
+python -m unittest discover -s python -p 'test_*.py'
+```
 
 | Example | What it demonstrates |
 | --- | --- |
@@ -66,3 +82,11 @@ npm run check:npm-install-policy
 Use `npm run clean` to remove generated files and local-only environment files.
 Before running `npm install --ignore-scripts` in any example, run
 `npm run check:npm-package-age` from the repo root.
+
+Focused regression commands after installing each example's dependencies:
+
+- Contact list: `npm test` in `typescript/validating-a-contact-list`.
+- Alignment playground: `npm run test:playground` in
+  `typescript/aeon-alignment-playground` (published WASM by default).
+- Rust: `cargo test --locked` in each Rust example directory.
+- Python: the unittest command above, using the installed PyPI wheel.

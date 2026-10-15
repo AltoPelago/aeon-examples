@@ -33,6 +33,10 @@ npm run read-contacts -- ./data/contacts.aeon
 
 Implementation note:
 - the examples use `readAeonChecked(...)` from `@altopelago/aeon-sdk` to collapse the repeated "compile errors must be zero / finalize errors must be zero" boilerplate before mapping into application objects.
+- Header declarations are checked in `compile.header.fields`, separately from
+  the payload-only finalized document. Matching a declared schema/profile id
+  does not authenticate or automatically execute that contract.
+- Run `npm test` for positive and fail-closed header/data regressions.
 
 ## AEON assignment-stream validation example
 

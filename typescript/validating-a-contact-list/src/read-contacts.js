@@ -8,6 +8,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { readAeonChecked } from '@altopelago/aeon-sdk';
+import { validateContactHeader } from './contact-header.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+\d{7,15}$/;
@@ -41,7 +42,9 @@ function expectKeys(obj, expected, path) {
 
 function parseAeon(text) {
   // AEON handles parsing plus "no compile/finalize errors" before we trust the document.
-  return readAeonChecked(text, { finalize: { mode: 'loose' } }).finalized.document;
+  const parsed = readAeonChecked(text, { finalize: { mode: 'loose' } });
+  validateContactHeader(parsed.compile);
+  return parsed.finalized.document;
 }
 
 /**
@@ -82,12 +85,7 @@ async function main() {
 
   // These checks validate the app's expected root shape, not AEON syntax itself.
   const root = asRecord(document, 'root');
-  expectKeys(root, ['aeon:encoding', 'aeon:mode', 'aeon:profile', 'aeon:schema', 'aeon:version', 'contacts'], 'root');
-  if (root['aeon:encoding'] !== 'utf-8') fail('root.aeon:encoding must be utf-8');
-  if (root['aeon:mode'] !== 'transport') fail('root.aeon:mode must be transport');
-  if (root['aeon:version'] !== '1') fail('root.aeon:version must be 1');
-  if (root['aeon:profile'] !== 'aeon.gp.profile.v1') fail('root.aeon:profile must be aeon.gp.profile.v1');
-  if (root['aeon:schema'] !== 'altopelago.contact-list.schema.v1') fail('root.aeon:schema must be altopelago.contact-list.schema.v1');
+  expectKeys(root, ['contacts'], 'root');
   if (!Array.isArray(root.contacts)) fail('root.contacts must be a list');
 
   const contacts = root.contacts.map((entry, index) => toContact(entry, index));

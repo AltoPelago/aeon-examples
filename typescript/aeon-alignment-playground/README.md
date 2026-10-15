@@ -29,13 +29,11 @@ From this directory:
 npm install --ignore-scripts
 ```
 
-This example is wired to public `@altopelago/aeon-*` package names. It should be installed
-after the `@altopelago/aeon-annotation-stream`, `@altopelago/aeon-canonical`, `@altopelago/aeon-core`,
-`@altopelago/aeon-finalize`, and `@altopelago/aeon-wasm` packages are published at `0.9.3` or newer.
-Before installing from npm, verify that none of the direct or transitive
-packages were published or updated in the last 7 days. This example also ships
-an `.npmrc` with `ignore-scripts=true` so dependency lifecycle scripts do not run
-during install.
+This example pins published AEON 0.15.0 and independently versioned SANSA 0.14.2.
+Before installing, run `npm run check:npm-package-age` from the repository
+root. Its seven-day third-party quarantine explicitly exempts the first-party
+AltoPelago release packages. This example also ships an `.npmrc` with
+`ignore-scripts=true` so dependency lifecycle scripts do not run during install.
 
 ## Run
 
@@ -65,6 +63,29 @@ npm run build
 ```bash
 npm run test:playground
 ```
+
+The default tests use the installed npm WASM binary, including SANSA literals,
+symbols, reduced dates/WTC, second 60, authored fractional precision and
+canonical trimtick/backtick payloads. They do not silently prefer a sibling
+checkout. To additionally test a built local WASM binary:
+
+```bash
+AEON_TEST_LOCAL=1 npm run test:playground
+```
+
+The comparison normalizes native string-spelling labels, identifies WTC
+separately from ordinary datetime, retains authored header order, and supplies
+the known finalization phase for TypeScript finalizer diagnostics. Symbol JSON
+rejection currently differs between engines in diagnostic wording and start
+span. Those exact differences are regression-tested and remain visible as a
+diagnostics mismatch; canonical output, event families and data are still
+compared independently without discarding diagnostic messages or spans.
+
+Two executed TODO regressions retain a separate known library issue: canonical
+key sorting can move a clone before its target, making the canonical document
+fail reparsing with `FORWARD_REFERENCE`. They are not passing round-trip claims.
+The new symbol/temporal/trimtick fixtures require round-trip payload preservation;
+the demo continues to show reference problems rather than rewriting the source.
 
 ## Notes
 

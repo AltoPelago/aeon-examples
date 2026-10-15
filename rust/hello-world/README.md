@@ -16,9 +16,12 @@ cargo run
 
 ## What It Shows
 
-This example uses the Rust library surface directly:
+This example pins the published crates.io facade at 0.15.0:
 
-- `aeon-core::CompileOptions`
-- `aeon-finalize::from_aeon_str`
+- `altopelago_aeon::load_file`
+- `altopelago_aeon::LoadOptions`
+
+Use Rust 1.93.1 or newer. Run `cargo test --locked` to check typed loading
+and rejection of incompatible application data.
 
 That makes it the Rust counterpart to the higher-level hello-world flows in the TypeScript and Python examples.

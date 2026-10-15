@@ -21,6 +21,7 @@
   },
   {
     "name": "reference-whitespace-after-sigils",
+    "canonicalRoundTripIssue": "Canonical key sorting can move a clone before its target and introduce FORWARD_REFERENCE.",
     "source": "order:o = {\n  total:n = 2\n}\nclone:n = ~ order.total\npointer:n = ~> order.total\n",
     "validationMode": "strict",
     "canonicalContains": ["~order.total", "~>order.total"],
@@ -57,8 +58,7 @@
     "errorCodes": [],
     "warningCodes": [],
     "eventPaths": ["$.csv", "$.ctx"],
-    "eventTypes": ["SansaAddressLiteral", "SansaAddressLiteral"],
-    "requiresCurrentAeon": true
+    "eventTypes": ["SansaAddressLiteral", "SansaAddressLiteral"]
   },
   {
     "name": "binding-and-indexed-child-attributes",
@@ -72,6 +72,7 @@
   },
   {
     "name": "clone-materialization",
+    "canonicalRoundTripIssue": "Canonical key sorting can move a clone before its target and introduce FORWARD_REFERENCE.",
     "source": "source = {\n  value = 7\n}\ncopy = ~source\n",
     "validationMode": "transport",
     "canonicalContains": ["copy = ~source"],
@@ -99,5 +100,45 @@
     "warningCodes": [],
     "eventPaths": ["$.accent"],
     "eventTypes": ["StringLiteral"]
+  },
+  {
+    "name": "symbol-family-canonical-and-json-boundary",
+    "source": "status:symbol = |approved|\n",
+    "validationMode": "strict",
+    "canonicalContains": ["status:symbol = |approved|"],
+    "errorCodes": ["FINALIZE_JSON_PROFILE_SYMBOL"],
+    "diagnosticDifferences": {
+      "typescriptMessage": "Symbolic literal is not representable in the strict JSON profile: |approved|",
+      "rustMessage": "Symbol literal is not losslessly representable in the strict JSON profile: approved",
+      "typescriptStartColumn": 17,
+      "rustStartColumn": 1
+    },
+    "eventPaths": ["$.status"],
+    "eventTypes": ["SymbolicLiteral"]
+  },
+  {
+    "name": "reduced-date-and-wtc",
+    "source": "date:date = 2024-02\nclock:wtc = 2024-T10:10:00&Europe\n",
+    "validationMode": "strict",
+    "canonicalContains": ["2024-02", "2024-T10:10:00&Europe"],
+    "eventPaths": ["$.date", "$.clock"],
+    "eventTypes": ["DateLiteral", "WTCDateTimeLiteral"]
+  },
+  {
+    "name": "core-second60-and-authored-precision",
+    "source": "clock:time = 23:55:60.12345678901200\n",
+    "validationMode": "strict",
+    "canonicalContains": ["23:55:60.12345678901200"],
+    "eventPaths": ["$.clock"],
+    "eventTypes": ["TimeLiteral"]
+  },
+  {
+    "name": "prose-trimticks-and-backticks-preserve-payload",
+    "source": "trimmed:prose = >`\n  hello\n world\n hello\n`\nraw:string = `\n  hello\n world\n hello\n`\n",
+    "validationMode": "strict",
+    "canonicalContains": ["trimmed:prose = >`", "raw:string ="],
+    "finalizedDocument": {"trimmed": " hello\nworld\nhello", "raw": "\n  hello\n world\n hello\n"},
+    "eventPaths": ["$.trimmed", "$.raw"],
+    "eventTypes": ["StringLiteral", "StringLiteral"]
   }
 ]

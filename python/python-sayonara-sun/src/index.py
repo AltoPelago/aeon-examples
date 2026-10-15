@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 
-from aeon import AeonLoadError
+from altopelago.aeon import AeonError
 from config import load_config
 
 
@@ -20,7 +20,7 @@ def main() -> None:
         print(f"Sleep window: {farewell.get_sleep_window()}")
         print("---")
         print(farewell.get_message(current_hour))
-    except AeonLoadError as error:
+    except AeonError as error:
         print(error, file=sys.stderr)
         raise SystemExit(1) from error
 

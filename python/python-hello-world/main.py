@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aeon import load_file
+from altopelago.aeon import load_file
 
 
 def main() -> None:
