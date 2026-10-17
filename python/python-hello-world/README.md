@@ -7,7 +7,7 @@ This is the smallest readable starting point for the Python implementation. It i
 ## Usage
 
 Use CPython 3.12–3.14 in a virtual environment. The requirement installs the
-published Rust-backed `altopelago-aeon==0.15.0` wheel.
+published Rust-backed `altopelago-aeon==0.16.0` wheel.
 
 ```bash
 cd python/python-hello-world

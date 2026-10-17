@@ -9,7 +9,7 @@
     "test": "npm run build && node --test dist/explorer.test.js"
   },
   "dependencies": {
-    "@altopelago/aeon-sdk": "0.15.0",
+    "@altopelago/aeon-sdk": "0.16.0",
     "@altopelago/sansa": "0.14.2"
   },
   "devDependencies": {

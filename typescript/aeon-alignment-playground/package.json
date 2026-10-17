@@ -12,12 +12,12 @@
     "test:playground": "node --test ./tests/playground-processor.test.js ./tests/literal-patterns.test.js"
   },
   "dependencies": {
-    "@altopelago/aeon-annotation-stream": "0.15.0",
-    "@altopelago/aeon-canonical": "0.15.0",
-    "@altopelago/aeon-core": "0.15.0",
-    "@altopelago/aeon-finalize": "0.15.0",
-    "@altopelago/aeon-wasm": "0.15.0",
-    "@altopelago/aeos-core": "0.15.0",
+    "@altopelago/aeon-annotation-stream": "0.16.0",
+    "@altopelago/aeon-canonical": "0.16.0",
+    "@altopelago/aeon-core": "0.16.0",
+    "@altopelago/aeon-finalize": "0.16.0",
+    "@altopelago/aeon-wasm": "0.16.0",
+    "@altopelago/aeos-core": "0.16.0",
     "@altopelago/sansa": "0.14.2"
   },
   "devDependencies": {

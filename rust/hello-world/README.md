@@ -16,7 +16,7 @@ cargo run
 
 ## What It Shows
 
-This example pins the published crates.io facade at 0.15.0:
+This example pins the published crates.io facade at 0.16.0:
 
 - `altopelago_aeon::load_file`
 - `altopelago_aeon::LoadOptions`

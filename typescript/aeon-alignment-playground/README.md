@@ -29,7 +29,7 @@ From this directory:
 npm install --ignore-scripts
 ```
 
-This example pins published AEON 0.15.0 and independently versioned SANSA 0.14.2.
+This example pins published AEON 0.16.0 and independently versioned SANSA 0.14.2.
 Before installing, run `npm run check:npm-package-age` from the repository
 root. Its seven-day third-party quarantine explicitly exempts the first-party
 AltoPelago release packages. This example also ships an `.npmrc` with
@@ -86,11 +86,15 @@ span. Those exact differences are regression-tested and remain visible as a
 diagnostics mismatch; canonical output, event families and data are still
 compared independently without discarding diagnostic messages or spans.
 
-Two executed TODO regressions retain a separate known library issue: canonical
-key sorting can move a clone before its target, making the canonical document
-fail reparsing with `FORWARD_REFERENCE`. They are not passing round-trip claims.
-The new symbol/temporal/trimtick fixtures require round-trip payload preservation;
-the demo continues to show reference problems rather than rewriting the source.
+The former canonical-reference TODO regressions are ordinary passing assertions
+against published 0.16.0 packages. Default reference-safe ordering preserves
+reference legality and chooses the smallest eligible key at each step. Both
+engines must preserve round-trip payloads and canonical fixed points; separate
+tests check clone/pointer forms and targets without comparing authored spans or
+requiring event emission order to survive sorting. Invalid authored references
+are rejected, not repaired by canonicalization. See the
+[0.16.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.16.0.md)
+before reusing stored canonical bytes or numeric clarifier ASTs.
 
 ## Notes
 

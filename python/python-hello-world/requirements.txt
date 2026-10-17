@@ -1,1 +1,1 @@
-altopelago-aeon==0.15.0
+altopelago-aeon==0.16.0

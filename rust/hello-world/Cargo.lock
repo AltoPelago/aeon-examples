@@ -21,9 +21,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c144aa6966354a68cfa9810f521487d9ac320c6b22d492ce7cf79965877ba438"
+checksum = "1540411524926ec70cd8851b602abacb6f8a7a1fd18cabc983aa64a9f07c294c"
 dependencies = [
  "altopelago-aeon-aeos",
  "altopelago-aeon-core",
@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-aeos"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bba5529c90eb12d6283f4a1b3859e3f7482e420f459a650c72340cf55195f69"
+checksum = "73ddc2240d69595cfb6862ab836f6c243b8c1c089fe7c657ee765bd249bea66e"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -49,9 +49,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-core"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3df14e275a5fb683829dd1f762244703745992e68eaec9898c66132b21bd9b5"
+checksum = "d2473e495bc6e1b76f901847f166dd29ebbeedd68a743b124be8feb2074203a4"
 dependencies = [
  "altopelago-aes-telex",
  "sha2",
@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-document"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a73d69dc0a813d50f698264a17a93cdb01707fbf7df882178277aff32907caef"
+checksum = "2570b516c0478795eda3e1ba8be0802569dfa23c397342cb599b73dc7397786c"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -69,9 +69,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-finalize"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2ee8bdabb286a3cf9a87906b4c327dc45bc786483a73e33a5afd2d7475132b9"
+checksum = "a539143299e78ddac4224accd5cf4b10b66ceceb9b06027cdc1eb9e2304e0ec7"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -81,9 +81,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aes-telex"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03e16fc6d32522fca79e7b6b0e7ea014d687f5f2e58b6b27bbc7dd94aabbd946"
+checksum = "a5d82791ad4d19aa8695683c3beb7630582414baf5c126ccbff614dbd737d1e3"
 dependencies = [
  "sha2",
 ]
