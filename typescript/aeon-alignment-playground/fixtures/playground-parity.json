@@ -21,7 +21,7 @@
   },
   {
     "name": "reference-whitespace-after-sigils",
-    "canonicalRoundTripIssue": "Canonical key sorting can move a clone before its target and introduce FORWARD_REFERENCE.",
+    "canonicalReferenceRoundTrip": true,
     "source": "order:o = {\n  total:n = 2\n}\nclone:n = ~ order.total\npointer:n = ~> order.total\n",
     "validationMode": "strict",
     "canonicalContains": ["~order.total", "~>order.total"],
@@ -72,7 +72,7 @@
   },
   {
     "name": "clone-materialization",
-    "canonicalRoundTripIssue": "Canonical key sorting can move a clone before its target and introduce FORWARD_REFERENCE.",
+    "canonicalReferenceRoundTrip": true,
     "source": "source = {\n  value = 7\n}\ncopy = ~source\n",
     "validationMode": "transport",
     "canonicalContains": ["copy = ~source"],

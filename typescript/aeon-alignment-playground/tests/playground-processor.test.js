@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalize } from '@altopelago/aeon-canonical';
+import { compile } from '@altopelago/aeon-core';
 
 import fixtures from '../fixtures/playground-parity.json' with { type: 'json' };
 import { processWithRustWasm, processWithTypeScriptCore } from '../src/playground-processor.js';
@@ -26,6 +28,15 @@ const WASM_ARTIFACTS = [
   { name: 'package rust wasm', path: PACKAGE_WASM_ARTIFACT },
   ...(testLocalWasm ? [{ name: 'local rust wasm', path: LOCAL_WASM_ARTIFACT }] : []),
 ];
+
+function referenceGraph(source) {
+  const result = compile(source);
+  assert.deepEqual(result.errors, []);
+  return result.events
+    .filter(event => ['CloneReference', 'PointerReference'].includes(event.value.type))
+    .map(event => ({ path: event.normalizedPath, kind: event.value.type, target: event.value.path }))
+    .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
 
 function buildOptions(validationMode) {
   return {
@@ -73,19 +84,18 @@ for (const fixture of fixtures) {
     }
     const roundTrip = await processWithTypeScriptCore(result.canonical.text, buildOptions(fixture.validationMode));
     assert.equal(roundTrip.canonical.text, result.canonical.text);
-    if (!fixture.canonicalRoundTripIssue) {
-      assert.deepEqual(roundTrip.finalized, result.finalized);
-      assert.deepEqual(roundTrip.errors.map(error => error.code), result.errors.map(error => error.code));
-    }
+    assert.deepEqual(roundTrip.finalized, result.finalized);
+    assert.deepEqual(roundTrip.errors.map(error => error.code), result.errors.map(error => error.code));
   });
 
-  if (fixture.canonicalRoundTripIssue) {
-    test(`canonical reference round-trip: ${fixture.name}`, { todo: fixture.canonicalRoundTripIssue }, async () => {
+  if (fixture.canonicalReferenceRoundTrip) {
+    test(`canonical reference round-trip: ${fixture.name}`, async () => {
       const options = buildOptions(fixture.validationMode);
       const original = await processWithTypeScriptCore(fixture.source, options);
       const reparsed = await processWithTypeScriptCore(original.canonical.text, options);
       assert.deepEqual(reparsed.finalized, original.finalized);
       assert.deepEqual(reparsed.errors.map(error => error.code), original.errors.map(error => error.code));
+      assert.deepEqual(referenceGraph(original.canonical.text), referenceGraph(fixture.source));
     });
   }
 }
@@ -107,6 +117,13 @@ for (const wasmArtifact of WASM_ARTIFACTS) {
       assert.deepEqual(rust.finalized, typescript.finalized);
       assert.deepEqual(rust.annotations, typescript.annotations);
       assert.deepEqual(rust.events, typescript.events);
+      if (fixture.canonicalReferenceRoundTrip) {
+        const reparsed = await processWithRustWasm(rust.canonical.text, options, readFileSync(wasmArtifact.path));
+        assert.deepEqual(reparsed.finalized, rust.finalized);
+        assert.deepEqual(reparsed.errors.map(error => error.code), rust.errors.map(error => error.code));
+        assert.equal(reparsed.canonical.text, rust.canonical.text);
+        assert.deepEqual(referenceGraph(rust.canonical.text), referenceGraph(fixture.source));
+      }
       if (fixture.diagnosticDifferences) {
         // Keep the known wording/range difference visible in the comparison UI.
         // Assert it explicitly instead of deleting messages/spans from normalization.
@@ -125,6 +142,26 @@ for (const wasmArtifact of WASM_ARTIFACTS) {
     });
   }
 }
+
+test('published canonical default chooses the smallest eligible key and rejects authored forward references', async () => {
+  const source = 'd=3\nc=2\nb=~c\na=1';
+  const options = buildOptions('transport');
+  for (const process of [
+    input => processWithTypeScriptCore(input, options),
+    input => processWithRustWasm(input, options, readFileSync(PACKAGE_WASM_ARTIFACT)),
+  ]) {
+    const result = await process(source);
+    assert.equal(result.ok, true);
+    assert.ok(result.canonical.text.endsWith('a = 1\nc = 2\nb = ~c\nd = 3\n'));
+    assert.deepEqual(referenceGraph(result.canonical.text), referenceGraph(source));
+    assert.equal((await process(result.canonical.text)).canonical.text, result.canonical.text);
+    const invalid = await process('a=~z\nz=1');
+    assert.equal(invalid.ok, false);
+    assert.equal(invalid.canonical.text, '');
+    assert.ok(invalid.errors.some(error => error.code === 'FORWARD_REFERENCE'));
+  }
+  assert.ok(canonicalize(source, { ordering: 'lexical-v1' }).text.endsWith('a = 1\nb = ~c\nc = 2\nd = 3\n'));
+});
 
 test('local rust wasm playground adapter accepts SANSA address literals', async (t) => {
   if (!testLocalWasm) {

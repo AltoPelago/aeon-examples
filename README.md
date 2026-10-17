@@ -2,10 +2,14 @@
 
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
-The examples use published AEON 0.15.0 packages from npm, crates.io and PyPI.
+The examples use published AEON 0.16.0 packages from npm, crates.io and PyPI.
 Rust uses the public `altopelago-aeon` facade; native Python imports
 `altopelago.aeon` on CPython 3.12–3.14, not the separate pure-Python reference.
 Fresh installs exercise registry artifacts, not sibling-repository paths.
+
+Read the [0.16.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.16.0.md)
+for reference-safe canonical ordering, type-only generic arguments and exact
+numeric clarifiers. Historical integrity verification bytes are unchanged.
 
 AEON remains on the v1 language line. Consumers of the TypeScript SANSA
 adapter should read the [0.15.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.15.0.md):
