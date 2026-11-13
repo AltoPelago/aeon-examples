@@ -1,0 +1,8 @@
+inventory\stock\:object = {
+  items:list<object> = [
+    \item1\ = { sku = "A-100", name\name1\ = "Widget", qty = 12 }
+    \item2\ = { sku = "B-200", name\name2\ = "Bracket", qty = 5 }
+  ]
+}
+chosen:sansa = $.inventory.items.\item1\.\name1\
+copy = ~inventory.items[0].name

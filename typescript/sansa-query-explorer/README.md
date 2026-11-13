@@ -82,3 +82,7 @@ transactions or a cost-based query optimizer.
 - `src/explorer.ts`: compilation, published adapter, addresses and query helpers.
 - `src/index.ts`: console walkthrough, usable from any working directory after build.
 - `src/explorer.test.ts`: query, provenance, adapter and error-path regressions.
+
+The unpublished [child identity example](../../shared/sansa-child-identities/)
+demonstrates the candidate selector extension separately. This explorer retains
+its published pins and does not acquire that capability through documentation.
