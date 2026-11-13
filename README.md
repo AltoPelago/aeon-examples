@@ -74,6 +74,10 @@ python -m unittest discover -s python -p 'test_*.py'
 | [Reference-Safe Schema](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_pattern` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
 | [Schema Policy Showcase](./shared/schema-policy-showcase/) | Comparative schema behavior: open vs closed world, reference allowed vs forbidden, and direct-literal requirements over the same AEON document. |
 
+Unpublished candidate assets: [SANSA child identity selectors](./shared/sansa-child-identities/)
+require an explicitly selected candidate graph. Existing runnable examples keep
+the published versions listed above.
+
 ## Repository Hygiene
 
 Run these checks before publishing changes:
