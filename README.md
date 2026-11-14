@@ -1,5 +1,8 @@
 # AEON Examples
 
+See [release integration](RELEASING.md) for beta/RC/stable acceptance and the
+shared AEON 0.17.0 checklist.
+
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
 The examples use published AEON 0.16.0 packages from npm, crates.io and PyPI.
