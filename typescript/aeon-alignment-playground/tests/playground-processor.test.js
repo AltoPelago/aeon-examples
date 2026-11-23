@@ -695,3 +695,49 @@ test('rust wasm playground adapter emits the normalized engine shape', async () 
   assert.equal(result.events[0]?.valueType, 'ToggleLiteral');
   assert.deepEqual(result.finalized.document, { state: true });
 });
+
+
+for (const [engine, processSource] of [
+  ['typescript', (source, options) => processWithTypeScriptCore(source, options)],
+  ['package rust wasm', (source, options) => processWithRustWasm(source, options, readFileSync(PACKAGE_WASM_ARTIFACT))],
+]) {
+  test(`${engine} rejects unresolved schema selectors without dropping their constraints`, async () => {
+    const source = String.raw`x\X\:number = 42`;
+    for (const [selector, code] of [
+      ['$.*&key("x")', 'SANSA_RESOLVE_UNSUPPORTED_PROPERTY_SCOPE'],
+      ['$.*&tag("book")', 'SANSA_RESOLVE_UNSUPPORTED_PROPERTY_SCOPE'],
+      ['$.*&headTag("book")', 'SANSA_RESOLVE_UNSUPPORTED_PROPERTY_SCOPE'],
+      ["$.\\X\\", 'SANSA_RESOLVE_UNSUPPORTED_IDENTITY'],
+    ]) {
+      for (const required of [false, true]) {
+        const result = await processSource(source, {
+          ...buildOptions('strict'),
+          schemaEnabled: true,
+          schemaText: JSON.stringify({rules: [{selector, constraints: {type: 'StringLiteral', required}}]}),
+        });
+        assert.equal(result.ok, false, `${engine}: ${selector}, required=${required}`);
+        assert.deepEqual(result.errors.map(({code, path, phase}) => ({code, path, phase})), [
+          {code, path: selector, phase: 'schema_validation'},
+        ]);
+        assert.deepEqual(result.diagnostics.errors, result.errors);
+      }
+    }
+  });
+
+  test(`${engine} keeps supported schema matches and successful empty selections distinct`, async () => {
+    for (const [selector, type, required, codes] of [
+      ['$.*', 'StringLiteral', false, ['type_mismatch']],
+      ['$.x', 'NumberLiteral', true, []],
+      ['$.absent', 'StringLiteral', false, []],
+      ['$.absent', 'StringLiteral', true, ['missing_required_field']],
+    ]) {
+      const result = await processSource('x:number = 42', {
+        ...buildOptions('strict'),
+        schemaEnabled: true,
+        schemaText: JSON.stringify({rules: [{selector, constraints: {type, required}}]}),
+      });
+      assert.equal(result.ok, codes.length === 0, `${engine}: ${selector}`);
+      assert.deepEqual(result.errors.map(error => error.code), codes);
+    }
+  });
+}

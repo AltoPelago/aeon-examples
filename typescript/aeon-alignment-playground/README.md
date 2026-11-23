@@ -111,3 +111,21 @@ before reusing stored canonical bytes or numeric clarifier ASTs.
   `path` rules, SANSA `selector` rules using `.*`, and common constraints such
   as `required`, `type`, `datatype`, string length and pattern checks, numeric
   bounds, container kind, and exact child count.
+
+## Schema selector capability boundary
+
+The optional AEOS-shaped validator uses the playground's event-summary namespace.
+It supports its existing structural selectors, patterns, descendants and filters.
+That namespace does not advertise child-identity or property inspection, so schema
+selectors containing identities, `&key`, `&tag` or `&headTag` produce explicit
+SANSA diagnostics in the `schema_validation` phase in both engines. A parser
+accepting the syntax does not add the missing host capability. Successful empty
+selections remain valid for optional rules; unresolved selectors never silently
+drop their constraints. This does not change inert SANSA literals in source data
+or admit a new schema evaluator/profile.
+
+Compare retains existing rejected-schema differences: TypeScript withholds its
+finalized document while Rust WASM can retain native output produced before the
+playground's schema check, and diagnostic span availability can differ. Both
+engines still report `ok: false`; consult the diagnostics rather than treating a
+retained document or a comparison mismatch as validation success.
