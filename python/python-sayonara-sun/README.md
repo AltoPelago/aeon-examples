@@ -17,7 +17,7 @@ A Python config-loading example that mirrors the staged-validation shape of the 
 ## Usage
 
 Use CPython 3.12–3.14 in a virtual environment. The pinned requirement installs
-the published native `altopelago-aeon==0.17.0rc2` wheel from PyPI.
+the published native `altopelago-aeon==0.17.0rc3` wheel from PyPI.
 
 ```bash
 cd python/python-sayonara-sun

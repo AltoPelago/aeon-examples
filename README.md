@@ -5,16 +5,15 @@ shared AEON 0.17.0 checklist.
 
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
-This branch qualifies published AEON **0.17.0 RC2** packages from npm, crates.io
-and PyPI. npm/Rust use `0.17.0-rc.2`; native Python uses `0.17.0rc2`. These are
-prereleases, not stable 0.17.0. The npm RC uses the reviewed manual bootstrap
-without CI provenance; registry signatures, hashes and clean consumers are checked
-separately. Stable adoption and production deployment remain separate gates.
+This branch qualifies published AEON **0.17.0 RC3** packages from npm, crates.io
+and PyPI. npm/Rust use `0.17.0-rc.3`; native Python uses `0.17.0rc3`. These are
+prereleases, not stable 0.17.0. The npm RC uses the protected GitHub OIDC workflow with verified CI provenance;
+registry signatures, hashes and clean consumers are checked separately. Stable adoption and production deployment remain separate gates.
 Rust uses the public `altopelago-aeon` facade; native Python imports
 `altopelago.aeon` on CPython 3.12–3.14, not the separate pure-Python reference.
 Fresh installs exercise registry artifacts, not sibling-repository paths.
 
-For the RC feature and compatibility boundaries, read the [0.17.0 migration guide](https://github.com/AltoPelago/aeon/blob/c6f338c8db191e0f0eb0c6f2b641d3cc18476199/docs/migration-0.17.0.md).
+For the RC feature and compatibility boundaries, read the [0.17.0 migration guide](https://github.com/AltoPelago/aeon/blob/110faa7f31dfe9f25c6dfb4bd52888eecf3e122e/docs/migration-0.17.0.md).
 
 Read the [0.16.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.16.0.md)
 for reference-safe canonical ordering, type-only generic arguments and exact

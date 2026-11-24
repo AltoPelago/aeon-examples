@@ -24,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon"
-version = "0.17.0-rc.2"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8300489b412cd9926b8f4bea2d4f742352ec77e38b6bf8714b44396a650dafa9"
+checksum = "db2b0261a23f203b4122230898db07ddea2dd74002c1107348f881eaf0537f7a"
 dependencies = [
  "altopelago-aeon-aeos",
  "altopelago-aeon-core",
@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-aeos"
-version = "0.17.0-rc.2"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28ef6c9d7eac97c9d25819e2097ae92739681665bca6b63cfd57a1b64a4e64f5"
+checksum = "70702afa6a71e9932289ebbbb833cb2cbb630057457d98186a8a3fd973e5636a"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -53,9 +53,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-core"
-version = "0.17.0-rc.2"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747042872a7b4b51d68f0c0f8bd0a80d70562b38ca372751bb9d7101db9e449c"
+checksum = "a03009d31b0a9eb7fd930c0b3fc8d4564e7da745b9847d02aa537856f7e91103"
 dependencies = [
  "altopelago-aes-telex",
  "altopelago-sansa-runtime",
@@ -64,9 +64,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-document"
-version = "0.17.0-rc.2"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521881c0a749f4fc4af2de96ddcd3c6086c2dbaf01aef7e387e6779d026c0641"
+checksum = "66fa5dce7e6b2448a398745aa1c8a18fa07908d31958a442a1872640d599e9f0"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -74,9 +74,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-aeon-finalize"
-version = "0.17.0-rc.2"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ef11562a3eebd89d3b5b0811c982e259b2fe63567958ac7f78a9c69ae51482"
+checksum = "71f9e39ea65b5bc6e2f7105ffb65d3d37623d7ed4429c4b213b3487998f3dd7d"
 dependencies = [
  "altopelago-aeon-core",
  "altopelago-aes-telex",
@@ -95,9 +95,9 @@ dependencies = [
 
 [[package]]
 name = "altopelago-sansa-runtime"
-version = "0.15.0-rc.2"
+version = "0.15.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d91953577c6880de02db20106107b63543ea924d5d4f5fc47ca447c4ff5f878b"
+checksum = "e41bf0fd220efacbabb07721372a4236bd2523e93221622997aa4ceac767916b"
 
 [[package]]
 name = "block-buffer"

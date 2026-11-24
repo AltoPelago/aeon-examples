@@ -9,8 +9,8 @@
     "dev": "npm start"
   },
   "dependencies": {
-    "@altopelago/aeon-sdk": "0.17.0-rc.2",
-    "@altopelago/aeos-core": "0.17.0-rc.2"
+    "@altopelago/aeon-sdk": "0.17.0-rc.3",
+    "@altopelago/aeos-core": "0.17.0-rc.3"
   },
   "devDependencies": {
     "@types/node": "20.10.6",
