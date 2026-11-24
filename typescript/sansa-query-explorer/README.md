@@ -17,8 +17,8 @@ npm start
 npm test
 ```
 
-This example pins published AEON SDK **0.17.0-rc.3** and independently versioned SANSA
-**0.15.0-rc.3**. The repository's seven-day third-party quarantine explicitly exempts
+This example pins published AEON SDK **0.17.0** and independently versioned SANSA
+**0.15.0**. The repository's seven-day third-party quarantine explicitly exempts
 first-party AltoPelago releases. The example-local `.npmrc` disables dependency
 lifecycle scripts. No sibling repositories or private archives are required. These published RC
 packages do not imply stable-release or deployment acceptance.

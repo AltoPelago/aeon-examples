@@ -18,7 +18,7 @@ cargo run
 
 This example uses the Rust library surface directly:
 
-- `altopelago_aeon::load_file` from the published 0.17.0-rc.3 facade
+- `altopelago_aeon::load_file` from the published 0.17.0 facade
 - `altopelago-aeon-core` and `altopelago-aeon-aeos` for options and schema types
 
 Use Rust 1.93.1 or newer. Run `cargo test --locked` for schema and business-rule

@@ -29,7 +29,7 @@ From this directory:
 npm install --ignore-scripts
 ```
 
-This example pins published AEON 0.17.0-rc.3 and independently versioned SANSA 0.15.0-rc.3.
+This example pins published AEON 0.17.0 and independently versioned SANSA 0.15.0.
 Before installing, run `npm run check:npm-package-age` from the repository
 root. Its seven-day third-party quarantine explicitly exempts the first-party
 AltoPelago release packages. This example also ships an `.npmrc` with
@@ -87,7 +87,7 @@ diagnostics mismatch; canonical output, event families and data are still
 compared independently without discarding diagnostic messages or spans.
 
 The former canonical-reference TODO regressions are ordinary passing assertions
-against published 0.17.0-rc.3 packages. Default reference-safe ordering preserves
+against published 0.17.0 packages. Default reference-safe ordering preserves
 reference legality and chooses the smallest eligible key at each step. Both
 engines must preserve round-trip payloads and canonical fixed points; separate
 tests check clone/pointer forms and targets without comparing authored spans or
