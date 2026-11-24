@@ -403,26 +403,25 @@ function buildSchemaResolveNamespace(events) {
   };
 }
 
-function schemaSelectorMatchSet(selector, namespace) {
-  const result = resolveAddress(selector, namespace);
-  if (!result.ok) {
-    return new Set();
-  }
-  return new Set(
-    result.bindings
-      .filter((binding) => binding.event)
-      .map((binding) => binding.event.path),
-  );
-}
-
 function buildSchemaSelectorMatchSets(rules, namespace) {
   const matchSets = new Map();
   for (const rule of rules) {
     if (typeof rule.selector === 'string' && !matchSets.has(rule.selector)) {
-      matchSets.set(rule.selector, schemaSelectorMatchSet(rule.selector, namespace));
+      const result = resolveAddress(rule.selector, namespace);
+      if (!result.ok) {
+        return {
+          matchSets,
+          errors: result.errors.map((error) => schemaDiag(error.code, rule.selector, error.message)),
+        };
+      }
+      matchSets.set(rule.selector, new Set(
+        result.bindings
+          .filter((binding) => binding.event)
+          .map((binding) => binding.event.path),
+      ));
     }
   }
-  return matchSets;
+  return { matchSets, errors: [] };
 }
 
 function appendAttributePath(basePath, key) {
@@ -540,10 +539,13 @@ function validateSchemaEvents(rawEvents, schema) {
   const events = normalizeSchemaEvents(rawEvents)
     .filter((event) => !event.path.startsWith('$.[\"aeon:'));
   const errors = [];
-  const selectorMatchSets = buildSchemaSelectorMatchSets(
+  const { matchSets: selectorMatchSets, errors: selectorErrors } = buildSchemaSelectorMatchSets(
     schema.rules,
     buildSchemaResolveNamespace(events),
   );
+  if (selectorErrors.length > 0) {
+    return { ok: false, errors: selectorErrors, warnings: [] };
+  }
 
   for (const rule of schema.rules) {
     const ruleAddress = schemaRuleAddress(rule);

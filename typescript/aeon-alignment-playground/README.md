@@ -29,7 +29,7 @@ From this directory:
 npm install --ignore-scripts
 ```
 
-This example pins published AEON 0.16.0 and independently versioned SANSA 0.14.2.
+This example pins published AEON 0.17.0 and independently versioned SANSA 0.15.0.
 Before installing, run `npm run check:npm-package-age` from the repository
 root. Its seven-day third-party quarantine explicitly exempts the first-party
 AltoPelago release packages. This example also ships an `.npmrc` with
@@ -87,7 +87,7 @@ diagnostics mismatch; canonical output, event families and data are still
 compared independently without discarding diagnostic messages or spans.
 
 The former canonical-reference TODO regressions are ordinary passing assertions
-against published 0.16.0 packages. Default reference-safe ordering preserves
+against published 0.17.0 packages. Default reference-safe ordering preserves
 reference legality and chooses the smallest eligible key at each step. Both
 engines must preserve round-trip payloads and canonical fixed points; separate
 tests check clone/pointer forms and targets without comparing authored spans or
@@ -111,3 +111,21 @@ before reusing stored canonical bytes or numeric clarifier ASTs.
   `path` rules, SANSA `selector` rules using `.*`, and common constraints such
   as `required`, `type`, `datatype`, string length and pattern checks, numeric
   bounds, container kind, and exact child count.
+
+## Schema selector capability boundary
+
+The optional AEOS-shaped validator uses the playground's event-summary namespace.
+It supports its existing structural selectors, patterns, descendants and filters.
+That namespace does not advertise child-identity or property inspection, so schema
+selectors containing identities, `&key`, `&tag` or `&headTag` produce explicit
+SANSA diagnostics in the `schema_validation` phase in both engines. A parser
+accepting the syntax does not add the missing host capability. Successful empty
+selections remain valid for optional rules; unresolved selectors never silently
+drop their constraints. This does not change inert SANSA literals in source data
+or admit a new schema evaluator/profile.
+
+Compare retains existing rejected-schema differences: TypeScript withholds its
+finalized document while Rust WASM can retain native output produced before the
+playground's schema check, and diagnostic span availability can differ. Both
+engines still report `ok: false`; consult the diagnostics rather than treating a
+retained document or a comparison mismatch as validation success.

@@ -5,10 +5,16 @@ shared AEON 0.17.0 checklist.
 
 Public examples for AEON documents, schemas, tooling, and SDK usage.
 
-The examples use published AEON 0.16.0 packages from npm, crates.io and PyPI.
+This branch adopts verified stable AEON **0.17.0** packages from npm, crates.io
+and PyPI, with independently versioned SANSA **0.15.0**. Protected publication,
+actual archive/signature/provenance and upstream clean consumers are verified;
+this repository's owning tests and normal source adoption are separate gates.
 Rust uses the public `altopelago-aeon` facade; native Python imports
-`altopelago.aeon` on CPython 3.12–3.14, not the separate pure-Python reference.
-Fresh installs exercise registry artifacts, not sibling-repository paths.
+`altopelago.aeon` on CPython 3.12–3.14, not a second pure-Python distribution.
+Fresh installs use exact registry artifacts, with the existing install-script and
+third-party package-age policies unchanged. No deployment is implied.
+
+For feature and compatibility boundaries, read the [0.17.0 migration guide](https://github.com/AltoPelago/aeon/blob/b477b6689b7b7f9f3363c77a4297303b038e2ca0/docs/migration-0.17.0.md).
 
 Read the [0.16.0 migration guide](https://github.com/AltoPelago/aeon/blob/main/docs/migration-0.16.0.md)
 for reference-safe canonical ordering, type-only generic arguments and exact
@@ -77,7 +83,7 @@ python -m unittest discover -s python -p 'test_*.py'
 | [Reference-Safe Schema](./shared/reference-safe-schema/) | AEOS reference hardening with `reference_target_pattern` and `resolve_reference_form`, showing valid references, swapped-domain failures, and laundered-terminal failures. |
 | [Schema Policy Showcase](./shared/schema-policy-showcase/) | Comparative schema behavior: open vs closed world, reference allowed vs forbidden, and direct-literal requirements over the same AEON document. |
 
-Unpublished candidate assets: [SANSA child identity selectors](./shared/sansa-child-identities/)
+Shared source/target fixtures: [SANSA child identity selectors](./shared/sansa-child-identities/)
 require an explicitly selected candidate graph. Existing runnable examples keep
 the published versions listed above.
 
